@@ -2,6 +2,7 @@ package action
 
 import (
 	"strings"
+	"fmt"
 )
 
 type AttributeAction struct {
@@ -18,7 +19,10 @@ type DependAction struct {
 }
 
 func (a *AttributeAction) FromActionString(action_string string){
-	for key, value := range tokenize(action_string){
+	for _,value := range tokenize(action_string){
+		equalpos := strings.Index(value, "=")
+		key := value[0: equalpos]
+		value = value[equalpos+1:]
 		switch key {
 		case "action_type" : a.Type = value
 		case "name" : a.Name = value
@@ -29,7 +33,10 @@ func (a *AttributeAction) FromActionString(action_string string){
 }
 
 func (d *DependAction) FromActionString(action_string string){
-	for key, value := range tokenize(action_string){
+	for _, value := range tokenize(action_string){
+		equalpos := strings.Index(value, "=")
+		key := value[0: equalpos]
+		value = value[equalpos+1:]
 		switch key {
 		case "action_type": d.ActionType = value
 		case "type": d.Type = value
@@ -39,17 +46,17 @@ func (d *DependAction) FromActionString(action_string string){
 	}
 }
 
-func tokenize(action_string string) map[string]string {
-	retVal := map[string]string{}
+func tokenize(action_string string) []string {
+	retVal := []string{}
 	typespacepos := strings.Index(action_string, " ")
-	retVal["action_type"] = action_string[0:typespacepos]
+	retVal = append(retVal, fmt.Sprintf("%s=%s", "action_type", action_string[0:typespacepos]))
 	action_string = action_string[typespacepos+1:]
 	for strings.Contains(action_string, "="){
 		var key, value string
 		equalpos := strings.Index(action_string, "=")
 		key = action_string[0:equalpos]
 		action_string = action_string[equalpos+1:]
-		if strings.Contains(action_string, "="){
+		if strings.Contains(action_string, "=") && strings.Contains(action_string, " "){
 			secondequalpos := strings.Index(action_string, "=")
 			spacepos := strings.Index(action_string[0:secondequalpos], " ")
 			value = action_string[0:spacepos]
@@ -58,7 +65,13 @@ func tokenize(action_string string) map[string]string {
 			value = action_string
 			action_string = ""
 		}
-		retVal[key] = value
+		value = strings.Replace(value, "\"", "", -1)
+		value = strings.Replace(value, "\\\"'", "", -1)
+		value = strings.Replace(value, "\\\"", "", -1)
+		value = strings.Replace(value, "\\'", "", -1)
+		value = strings.Replace(value, "'\\", "", -1)
+		value = strings.Replace(value, "\\", "", -1)
+		retVal = append(retVal, fmt.Sprintf("%s=%s", key, value))
 	}
 	return retVal
 }
