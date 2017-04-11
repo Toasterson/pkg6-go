@@ -4,6 +4,7 @@ import (
 	"strings"
 	"fmt"
 	"time"
+	"strconv"
 )
 
 type Version struct {
@@ -38,16 +39,29 @@ func (v *Version) LesserThan(v2 Version) bool {
 	return false
 }
 
-func splitFMRIVersion(FMRIVersion string) (Version, Version, string, time.Time) {
-	var branch string
-	component, build := Version{}, Version{}
+func (v *Version) ToVersionString() string{
+	returnString := strconv.Itoa(v.Major)+"."+strconv.Itoa(v.Minor)+"."+strconv.Itoa(v.Patch)
+	if v.VersionLetter != "" {
+		returnString += v.VersionLetter
+	}
+	if v.Beta != 0 {
+		returnString += "-beta"+strconv.Itoa(v.Beta)
+	} else if v.ReleaseCandidate != 0 {
+		returnString += "-rc"+strconv.Itoa(v.ReleaseCandidate)
+	}
+	return returnString
+}
+
+func splitFMRIVersion(FMRIVersion string) (Version, string, string, time.Time) {
+	var branch, build string
+	component := Version{}
 	//Everything up to , is component
 	verseppos := strings.Index(FMRIVersion, ",")
 	component.FromVersionString(FMRIVersion[0:verseppos])
 	FMRIVersion = FMRIVersion[verseppos+1:]
 	//Everything up to - is build
 	branchseppos := strings.Index(FMRIVersion, "-")
-	build.FromVersionString(FMRIVersion[0:branchseppos])
+	build = FMRIVersion[0:branchseppos]
 	FMRIVersion = FMRIVersion[branchseppos+1:]
 	//Everything up to : is branch
 	relseppos := strings.Index(FMRIVersion, ":")
