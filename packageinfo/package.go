@@ -8,6 +8,8 @@ import (
 	"errors"
 	"bufio"
 	"os"
+	"encoding/json"
+	"fmt"
 )
 
 type PackageInfo struct {
@@ -175,4 +177,27 @@ func (p *PackageInfo) ReadManifest(location string) {
 		}
 	}
 
+}
+
+func (p *PackageInfo)Save(location string) error{
+	b, err := json.Marshal(p)
+	if err != nil{
+		return errors.New(fmt.Sprintf("Cannot Marshal %s", p.Name))
+	}
+	foldername := strings.Replace(p.Name, "/", "%2F", -1)
+	filename := p.ComponentVersion.ToVersionString() + "%2C" + p.BuildVersion + "-" + p.BranchVersion + "%3A" + p.PackagingDate.Format("20060102T150405Z")+".json"
+	path := location + "/publisher/" + p.Publisher + "/pkg/" + foldername+"/"+filename
+	file, ferr := os.OpenFile(path, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0666 )
+	if ferr != nil {
+		return errors.New(throwError(p.Name, ferr.Error()))
+	}
+	defer file.Close()
+	if _, werr := file.Write(b); werr != nil{
+		return errors.New(throwError(p.Name, werr.Error()))
+	}
+	return nil
+}
+
+func throwError(pkg string, err string) string {
+	return fmt.Sprintf("Error Saving %s: %e", pkg, err)
 }
