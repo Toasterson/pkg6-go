@@ -31,24 +31,24 @@ type DirectoryAction struct {
 }
 
 type FileAction struct {
-	Type          string `json:"type,-"`
-	Sha1          string `json:"sha1"`
-	Path          string `json:"path"`
-	Size          int `json:"size"`
-	Csize         int `json:"csize"`
-	Chash         string `json:"chash"`
-	Owner         string `json:"owner"`
-	Group         string `json:"group"`
-	Mode          string `json:"mode"`
-	Preserve      bool `json:"preserve"`
-	Overlay       bool `json:"overlay"`
-	Original_Name string `json:"original_name"`
-	Release_Note  string `json:"release_note"`
-	Revert_Tag    string `json:"revert_tag"`
-	Elfarch       string `json:"elfarch"`
-	Elfbits       string `json:"elfbits"`
-	Elfhash       string `json:"elfhash"`
-	Attributes    map[string]string `json:"attributes"`
+	Type         string            `json:"type,-"`
+	Sha1         string            `json:"sha1"`
+	Path         string            `json:"path"`
+	Size         int               `json:"size"`
+	Csize        int               `json:"csize"`
+	Chash        string            `json:"chash"`
+	Owner        string            `json:"owner"`
+	Group        string            `json:"group"`
+	Mode         string            `json:"mode"`
+	Preserve     bool              `json:"preserve"`
+	Overlay      bool              `json:"overlay"`
+	OriginalName string            `json:"original_name"`
+	ReleaseNote  string            `json:"release_note"`
+	RevertTag    string            `json:"revert_tag"`
+	Elfarch      string            `json:"elfarch"`
+	Elfbits      string            `json:"elfbits"`
+	Elfhash      string            `json:"elfhash"`
+	Attributes   map[string]string `json:"attributes"`
 }
 
 type LinkAction struct {
@@ -66,9 +66,9 @@ type LicenseAction struct {
 	Size    int `json:"size"`
 }
 
-func (a *AttributeAction) FromActionString(action_string string) {
+func (a *AttributeAction) FromActionString(actionString string) {
 	a.Optionals = make(map[string]string)
-	for _, value := range tokenize(action_string) {
+	for _, value := range tokenize(actionString) {
 		equalpos := strings.Index(value, "=")
 		key := value[0: equalpos]
 		value = value[equalpos+1:]
@@ -85,9 +85,9 @@ func (a *AttributeAction) FromActionString(action_string string) {
 	}
 }
 
-func (d *DependAction) FromActionString(action_string string) {
+func (d *DependAction) FromActionString(actionString string) {
 	d.Optional = make(map[string]string)
-	for _, value := range tokenize(action_string) {
+	for _, value := range tokenize(actionString) {
 		equalpos := strings.Index(value, "=")
 		key := value[0: equalpos]
 		value = value[equalpos+1:]
@@ -106,9 +106,9 @@ func (d *DependAction) FromActionString(action_string string) {
 	}
 }
 
-func (a *DirectoryAction) FromActionString(action_string string) {
+func (a *DirectoryAction) FromActionString(actionString string) {
 	a.Facets = make(map[string]string)
-	for _, value := range tokenize(action_string) {
+	for _, value := range tokenize(actionString) {
 		equalpos := strings.Index(value, "=")
 		key := value[0: equalpos]
 		value = value[equalpos+1:]
@@ -131,9 +131,9 @@ func (a *DirectoryAction) FromActionString(action_string string) {
 	}
 }
 
-func (a *FileAction) FromActionString(action_string string) {
+func (a *FileAction) FromActionString(actionString string) {
 	a.Attributes = make(map[string]string)
-	for _, value := range tokenize(action_string) {
+	for _, value := range tokenize(actionString) {
 		equalpos := strings.Index(value, "=")
 		key := value[0: equalpos]
 		value = value[equalpos+1:]
@@ -179,11 +179,11 @@ func (a *FileAction) FromActionString(action_string string) {
 				a.Overlay = false
 			}
 		case "original_name":
-			a.Original_Name = value
+			a.OriginalName = value
 		case "release_note":
-			a.Release_Note = value
+			a.ReleaseNote = value
 		case "revert_tag":
-			a.Revert_Tag = value
+			a.RevertTag = value
 		case "elfarch":
 			a.Elfarch = value
 		case "elfbits":
@@ -196,8 +196,8 @@ func (a *FileAction) FromActionString(action_string string) {
 	}
 }
 
-func (a *LinkAction) FromActionString(action_string string) {
-	for _, value := range tokenize(action_string) {
+func (a *LinkAction) FromActionString(actionString string) {
+	for _, value := range tokenize(actionString) {
 		equalpos := strings.Index(value, "=")
 		key := value[0: equalpos]
 		value = value[equalpos+1:]
@@ -213,8 +213,8 @@ func (a *LinkAction) FromActionString(action_string string) {
 	}
 }
 
-func (a *LicenseAction) FromActionString(action_string string) {
-	for _, value := range tokenize(action_string) {
+func (a *LicenseAction) FromActionString(actionString string) {
+	for _, value := range tokenize(actionString) {
 		equalpos := strings.Index(value, "=")
 		key := value[0: equalpos]
 		value = value[equalpos+1:]
@@ -246,16 +246,16 @@ func (a *LicenseAction) FromActionString(action_string string) {
 	}
 }
 
-func tokenize(action_string string) []string {
+func tokenize(actionString string) []string {
 	retVal := []string{}
-	typespacepos := strings.Index(action_string, " ")
-	retVal = append(retVal, fmt.Sprintf("%s=%s", "action_type", action_string[0:typespacepos]))
-	action_string = action_string[typespacepos+1:]
-	for strings.Contains(action_string, "=") {
+	typespacepos := strings.Index(actionString, " ")
+	retVal = append(retVal, fmt.Sprintf("%s=%s", "action_type", actionString[0:typespacepos]))
+	actionString = actionString[typespacepos+1:]
+	for strings.Contains(actionString, "=") {
 		var key, value string
-		equalpos := strings.Index(action_string, "=")
-		key = action_string[0:equalpos]
-		action_string = action_string[equalpos+1:]
+		equalpos := strings.Index(actionString, "=")
+		key = actionString[0:equalpos]
+		actionString = actionString[equalpos+1:]
 		if strings.Contains(key, " ") {
 			keyspacepos := strings.LastIndex(key, " ")
 			keyval := key[0:keyspacepos]
@@ -263,14 +263,14 @@ func tokenize(action_string string) []string {
 			key = key[keyspacepos+1:]
 			retVal = append(retVal, fmt.Sprintf("key=%s", keyval))
 		}
-		if strings.Contains(action_string, "=") && strings.Contains(action_string, " ") {
-			secondequalpos := strings.Index(action_string, "=")
-			spacepos := strings.LastIndex(action_string[0:secondequalpos], " ")
-			value = action_string[0:spacepos]
-			action_string = action_string[spacepos+1:]
+		if strings.Contains(actionString, "=") && strings.Contains(actionString, " ") {
+			secondequalpos := strings.Index(actionString, "=")
+			spacepos := strings.LastIndex(actionString[0:secondequalpos], " ")
+			value = actionString[0:spacepos]
+			actionString = actionString[spacepos+1:]
 		} else {
-			value = action_string
-			action_string = ""
+			value = actionString
+			actionString = ""
 		}
 		value = cleanFromChars(value)
 		retVal = append(retVal, fmt.Sprintf("%s=%s", key, value))

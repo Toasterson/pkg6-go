@@ -1,10 +1,9 @@
-package packageinfo
+package pkg
 
 import (
 	"time"
 	"github.com/toasterson/pkg6-go/action"
 	"strings"
-	"github.com/toasterson/pkg6-go/util"
 	"errors"
 	"bufio"
 	"os"
@@ -33,7 +32,7 @@ type PackageInfo struct {
 
 func (p *PackageInfo) SetFmri(fmri string) (error) {
 	if !strings.HasPrefix(fmri, "pkg://") {
-		return errors.New("Invalid FMRI given")
+		return errors.New("invalid FMRI given")
 	}
 	mapFMRI := p.SplitFmri(fmri)
 	p.Publisher = mapFMRI["publisher"]
@@ -97,14 +96,14 @@ func (p *PackageInfo) FromMap(packMap map[string]interface{}) {
 		case "actions":
 			{
 				for _, loopVal := range value.([]interface{}) {
-					act_string := loopVal.(string)
-					if strings.Contains(act_string, "set") {
+					actString := loopVal.(string)
+					if strings.Contains(actString, "set") {
 						attr := action.AttributeAction{}
-						attr.FromActionString(act_string)
+						attr.FromActionString(actString)
 						p.Attributes = append(p.Attributes, attr)
-					} else if strings.Contains(act_string, "depend") {
+					} else if strings.Contains(actString, "depend") {
 						dep := action.DependAction{}
-						dep.FromActionString(act_string)
+						dep.FromActionString(actString)
 						p.Dependencies = append(p.Dependencies, dep)
 					}
 				}
@@ -144,13 +143,14 @@ func (p *PackageInfo) Merge(p2 *PackageInfo) {
 	}
 }
 
-func (p *PackageInfo) ReadManifest(location string) {
+func (p *PackageInfo) ReadManifest(location string) (err error ){
 	foldername := strings.Replace(p.Name, "/", "%2F", -1)
 	filename := p.ComponentVersion.ToVersionString() + "%2C" + p.BuildVersion + "-" + p.BranchVersion + "%3A" + p.PackagingDate.Format("20060102T150405Z")
 	path := location + "/publisher/" + p.Publisher + "/pkg/" + foldername+"/"+filename
 	file, err := os.Open(path)
-	defer file.Close()
-	util.Error(err, "Opening Manifest")
+	defer func() {
+		err = file.Close()
+	}()
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		text := scanner.Text()
@@ -176,28 +176,26 @@ func (p *PackageInfo) ReadManifest(location string) {
 			p.Links = append(p.Links, linkAction)
 		}
 	}
-
+	return err
 }
 
-func (p *PackageInfo)Save(location string) error{
+func (p *PackageInfo)Save(location string) (err error) {
 	b, err := json.Marshal(p)
 	if err != nil{
-		return errors.New(fmt.Sprintf("Cannot Marshal %s", p.Name))
+		return fmt.Errorf("cannot Marshal %s: %e", p.Name, err)
 	}
 	foldername := strings.Replace(p.Name, "/", "%2F", -1)
 	filename := p.ComponentVersion.ToVersionString() + "%2C" + p.BuildVersion + "-" + p.BranchVersion + "%3A" + p.PackagingDate.Format("20060102T150405Z")+".json"
 	path := location + "/publisher/" + p.Publisher + "/pkg/" + foldername+"/"+filename
 	file, ferr := os.OpenFile(path, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0666 )
+	defer func() {
+		err = file.Close()
+	}()
 	if ferr != nil {
-		return errors.New(throwError(p.Name, ferr.Error()))
+		err = fmt.Errorf("error Saving %s: %e", p.Name, err)
 	}
-	defer file.Close()
 	if _, werr := file.Write(b); werr != nil{
-		return errors.New(throwError(p.Name, werr.Error()))
+		err = fmt.Errorf("error Saving %s: %e", p.Name, err)
 	}
-	return nil
-}
-
-func throwError(pkg string, err string) string {
-	return fmt.Sprintf("Error Saving %s: %e", pkg, err)
+	return err
 }
