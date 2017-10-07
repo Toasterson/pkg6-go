@@ -16,8 +16,6 @@ const actionString7 = "set name=info.upstream value=X.Org Foundation"
 const actionString8 = "set name=pkg.description value=Latvian language support's extra files"
 const actionString9 = "set name=illumos-gate.info.git-remote value=git://github.com/illumos/illumos-gate.git"
 
-const dependActString1 = "depend fmri=pkg:/system/library@0.5.11-2016.0.0.15685 type=require"
-
 func TestAttributeActionFromActionString1(t *testing.T) {
 	action := AttributeAction{}
 	action.FromActionString(actionString1)
@@ -118,13 +116,4 @@ func TestAttributeActionFromActionString9(t *testing.T) {
 	if action.Values[0] != "git://github.com/illumos/illumos-gate.git" {
 		t.Errorf(errorformat, "git://github.com/illumos/illumos-gate.git", action.Values[0])
 	}
-}
-
-func TestDependActionFromActionString(t *testing.T){
-	action := DependAction{}
-	action.FromActionString(dependActString1)
-	if action.FMRI == "fmri=pkg:/system/library@0.5.11-2016.0.0.15685"{
-		t.Errorf(errorformat, "fmri=pkg:/system/library@0.5.11-2016.0.0.15685", action.FMRI)
-	}
-
 }
