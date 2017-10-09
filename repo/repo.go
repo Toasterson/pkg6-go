@@ -16,6 +16,7 @@ type Repository interface {
 	GetPackageFMRIs(publisher string, partial bool) []string
 	Create() error
 	Load() error
+	Save() (err error)
 	Destroy() error
 	Upgrade() error
 	GetVersion() int
