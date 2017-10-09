@@ -90,3 +90,40 @@ func (c *Catalog) loadV1Part(location string, signature Signature){
 		}
 	}
 }
+
+func (c *Catalog) Load(location string) error{
+	if _, err := os.Stat(location+"/catalog.attrs"); os.IsExist(err) {
+		c.LoadFromV1(location)
+	} else {
+		file, ferr := os.OpenFile(location+"/catalog.json", os.O_RDONLY, 0666)
+		if ferr != nil{
+			return ferr
+		}
+		defer file.Close()
+		var b = []byte{}
+		if _, rerr := file.Read(b); rerr != nil {
+			return rerr
+		}
+		if merr := json.Unmarshal(b, c); merr != nil {
+			return merr
+		}
+	}
+	return nil
+}
+
+func (c *Catalog) Save(location string) error {
+	b, err := json.Marshal(c)
+	if err != nil{
+		return err
+	}
+	path := location+"/catalog.json"
+	file, ferr := os.OpenFile(path, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0666 )
+	if ferr != nil {
+		return ferr
+	}
+	defer file.Close()
+	if _, werr := file.Write(b); werr != nil{
+		return werr
+	}
+	return nil
+}

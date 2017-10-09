@@ -12,6 +12,12 @@ import (
 	"fmt"
 )
 
+func FromFMRI(fmri string) PackageInfo {
+	pkg := PackageInfo{}
+	pkg.SetFmri(fmri)
+	return pkg
+}
+
 type PackageInfo struct {
 	Publisher        string `json:"publisher,-"`
 	Name             string `json:"name"`
@@ -144,10 +150,8 @@ func (p *PackageInfo) Merge(p2 *PackageInfo) {
 	}
 }
 
-func (p *PackageInfo) ReadManifest(location string) {
-	foldername := strings.Replace(p.Name, "/", "%2F", -1)
-	filename := p.ComponentVersion.ToVersionString() + "%2C" + p.BuildVersion + "-" + p.BranchVersion + "%3A" + p.PackagingDate.Format("20060102T150405Z")
-	path := location + "/publisher/" + p.Publisher + "/pkg/" + foldername+"/"+filename
+func (p *PackageInfo) ReadManifest(location string) error {
+	path := location + "/" + FMRI2Unicode(p)
 	file, err := os.Open(path)
 	defer file.Close()
 	util.Error(err, "Opening Manifest")
@@ -174,9 +178,26 @@ func (p *PackageInfo) ReadManifest(location string) {
 			linkAction := action.LinkAction{}
 			linkAction.FromActionString(text)
 			p.Links = append(p.Links, linkAction)
+		} else {
+			return errors.New(fmt.Sprintf("Uknown Action in %p: %a", p.Name, text))
 		}
 	}
+	return nil
+}
 
+func (p *PackageInfo)getFMRI()string{
+	return p.Name + "@" + p.ComponentVersion.ToVersionString() + "," + p.BuildVersion + "-" + p.BranchVersion + ":" + p.PackagingDate.Format("20060102T150405Z")
+}
+
+func (p *PackageInfo)DropManifest(location string) error {
+	return os.Remove(location+"/"+FMRI2Unicode(p))
+}
+
+func (p *PackageInfo)UpgradeFormat(location string) error {
+	if err := p.Save(location); err != nil {
+		return err
+	}
+	return p.DropManifest(location)
 }
 
 func (p *PackageInfo)Save(location string) error{
@@ -184,20 +205,50 @@ func (p *PackageInfo)Save(location string) error{
 	if err != nil{
 		return errors.New(fmt.Sprintf("Cannot Marshal %s", p.Name))
 	}
-	foldername := strings.Replace(p.Name, "/", "%2F", -1)
-	filename := p.ComponentVersion.ToVersionString() + "%2C" + p.BuildVersion + "-" + p.BranchVersion + "%3A" + p.PackagingDate.Format("20060102T150405Z")+".json"
-	path := location + "/publisher/" + p.Publisher + "/pkg/" + foldername+"/"+filename
+	path := location+"/"+FMRI2Unicode(p)+".json"
 	file, ferr := os.OpenFile(path, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0666 )
 	if ferr != nil {
-		return errors.New(throwError(p.Name, ferr.Error()))
+		return errors.New(throwError("Saving", p.getFMRI(), ferr.Error()))
 	}
 	defer file.Close()
 	if _, werr := file.Write(b); werr != nil{
-		return errors.New(throwError(p.Name, werr.Error()))
+		return errors.New(throwError("Saving", p.getFMRI(), werr.Error()))
 	}
 	return nil
 }
 
-func throwError(pkg string, err string) string {
-	return fmt.Sprintf("Error Saving %s: %e", pkg, err)
+func (p *PackageInfo)Load(location string) error{
+	path := location + "/"+ FMRI2Unicode(p)+".json"
+	file, ferr := os.OpenFile(path, os.O_RDONLY, 0666 )
+	if ferr != nil {
+		return errors.New(throwError("Loading",p.getFMRI(), ferr.Error()))
+	}
+	defer file.Close()
+	var b = []byte{}
+	_, rerr := file.Read(b)
+	if rerr != nil{
+		return errors.New(throwError("Loading", p.getFMRI(), rerr.Error()))
+	}
+	return json.Unmarshal(b, p)
+}
+
+func throwError(action string, pkg string, err string) string {
+	return fmt.Sprintf("Error %s %s: %s", action, pkg, err)
+}
+
+func FMRI2Unicode(p *PackageInfo) string {
+	fmri := p.getFMRI()
+	fmri = strings.Replace(fmri, "/", "%2F", -1)
+	fmri = strings.Replace(fmri, ",", "%2C", -1)
+	fmri = strings.Replace(fmri, ":", "%3A", -1)
+	fmri = strings.Replace(fmri, "@", "/", -1)
+	return fmri
+}
+
+func Unicode2FMRI(unicode string) string {
+	unicode = strings.Replace(unicode, "/", "@", -1)
+	unicode = strings.Replace(unicode, "%2F", "/", -1)
+	unicode = strings.Replace(unicode, "%2C", ",", -1)
+	unicode = strings.Replace(unicode, "%3A", ":", -1)
+	return unicode
 }
