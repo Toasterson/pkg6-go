@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 )
 
 type Catalog struct {
@@ -111,7 +112,7 @@ func (c *Catalog) Load(location string) error{
 	return nil
 }
 
-func (c *Catalog) Save(location string) error {
+func (c *Catalog) Save(location string) (err error) {
 	b, err := json.Marshal(c)
 	if err != nil{
 		return err
@@ -121,9 +122,29 @@ func (c *Catalog) Save(location string) error {
 	if ferr != nil {
 		return ferr
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); err == nil{
+			err = cerr
+		}
+	}()
 	if _, werr := file.Write(b); werr != nil{
 		return werr
+	}
+	return nil
+}
+
+func (c Catalog) Upgrade(location string) error {
+	if err := c.Save(location); err != nil {
+		return err
+	}
+	files := []string{"catalog.attrs", "catalog.base.C", "catalog.dependency.C", "catalog.summary.C"}
+	if updates, err := filepath.Glob("update.*.C"); err != nil{
+		files = append(files, updates...)
+	}
+	for _, f := range files {
+		if err := os.Remove(filepath.Join(location, f)); err != nil{
+			return err
+		}
 	}
 	return nil
 }

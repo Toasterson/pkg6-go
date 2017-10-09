@@ -20,6 +20,7 @@ type Repository interface {
 	Upgrade() error
 	GetVersion() int
 	GetCatalog(publisher string) catalog.Catalog
+	AddPackage(info packageinfo.PackageInfo) error
 }
 
 
