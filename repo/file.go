@@ -1,4 +1,4 @@
-package repository
+package repo
 
 import (
 	"github.com/go-ini/ini"
@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"github.com/toasterson/pkg6-go/catalog"
 	"strings"
+	"fmt"
 )
 
 type FileRepo struct {
@@ -20,15 +21,15 @@ type FileRepo struct {
 	Catalogs map[string]catalog.Catalog
 }
 
-func (r *FileRepo) GetPath() string {
+func (r FileRepo) GetPath() string {
 	return r.Path
 }
 
-func (r *FileRepo) Create() error {
+func (r FileRepo) Create() error {
 	return nil
 }
 
-func (r *FileRepo)Load() error {
+func (r FileRepo)Load() error {
 	r.Publishers = r.getAllPublishersFromDisk()
 	inifile, err := ini.Load(r.GetPath()+"/pkg5.repository")
 	util.Error(err, "Error Loading FileRepo Configuration")
@@ -46,11 +47,11 @@ func (r *FileRepo)Load() error {
 	return nil
 }
 
-func (r *FileRepo) Destroy() error{
+func (r FileRepo) Destroy() error{
 	return os.RemoveAll(r.GetPath())
 }
 
-func (r *FileRepo)Upgrade() error{
+func (r FileRepo)Upgrade() error{
 	for _, pub := range r.Publishers{
 		pkgPath := r.Path + "/publisher/"+pub+"/pkg"
 		for _, pkgFMRI := range r.GetPackageFMRIs(pub, false){
@@ -67,8 +68,8 @@ func (r *FileRepo)Upgrade() error{
 	return nil
 }
 
-func (r *FileRepo)GetPackageFMRIs(publisher string, partial bool) []string{
-	var FMRIS = []string{}
+func (r FileRepo)GetPackageFMRIs(publisher string, partial bool) []string{
+	var FMRIS []string
 	pkgPath := r.Path+"/publisher/"+publisher+"/pkg"
 	packages, _ := ioutil.ReadDir(pkgPath)
 	for _, pkg := range packages{
@@ -84,12 +85,12 @@ func (r *FileRepo)GetPackageFMRIs(publisher string, partial bool) []string{
 	return FMRIS
 }
 
-func (r *FileRepo) GetPublishers() []string {
+func (r FileRepo) GetPublishers() []string {
 	return r.Publishers
 }
 
-func (r *FileRepo)getAllPublishersFromDisk() []string{
-	var publishers = []string{}
+func (r FileRepo)getAllPublishersFromDisk() []string{
+	var publishers []string
 	files, _ := ioutil.ReadDir(r.Path+"/publisher")
 	for _, f := range files {
 		if f.IsDir() {
@@ -99,25 +100,28 @@ func (r *FileRepo)getAllPublishersFromDisk() []string{
 	return publishers
 }
 
-func (r *FileRepo)GetFile(publisher string, hash string) *os.File{
+func (r FileRepo)GetFile(publisher string, hash string) (*os.File, error){
 	file, err := os.OpenFile(r.Path+"/publisher/"+publisher+"/file/"+hash[0:2]+"/"+hash, os.O_RDONLY, 0666)
 	if err != nil{
-		return nil
+		return nil, err
 	}
-	return file
+	return file, nil
 }
 
-func (r *FileRepo)GetPackageInfo(fmri string) packageinfo.PackageInfo {
-	//TODO Return Package Matching of Highest Priority Publisher if Asked
+func (r FileRepo)GetPackage(fmri string) (packageinfo.PackageInfo, error) {
 	if !strings.Contains(fmri, "pkg://"){
-		return packageinfo.PackageInfo{}
+		return packageinfo.PackageInfo{}, fmt.Errorf("package needs to be with publisher to retrieve from repo")
 	}
 	pkg := packageinfo.PackageInfo{}
 	pkg.SetFmri(fmri)
 	pkg.Load(r.Path+"/publisher/"+pkg.Publisher+"/pkg")
-	return pkg
+	return pkg, nil
 }
 
-func (r *FileRepo)GetCatalog(publisher string) catalog.Catalog{
+func (r FileRepo)GetCatalog(publisher string) catalog.Catalog{
 	return r.Catalogs[publisher]
+}
+
+func (r FileRepo)GetVersion() int {
+	return r.Version
 }
