@@ -1,11 +1,11 @@
 package repo
 
 import (
+	"fmt"
+	"github.com/toasterson/pkg6-go/catalog"
 	"github.com/toasterson/pkg6-go/packageinfo"
 	"os"
-	"github.com/toasterson/pkg6-go/catalog"
 	"strings"
-	"fmt"
 )
 
 type Repository interface {
@@ -21,11 +21,11 @@ type Repository interface {
 	Upgrade() error
 	GetVersion() int
 	GetCatalog(publisher string) catalog.Catalog
+	Search(params map[string]string, query string) string
 	AddPackage(info packageinfo.PackageInfo) error
 }
 
-
-func NewRepo(url string) (Repository, error){
+func NewRepo(url string) (Repository, error) {
 	switch {
 	case strings.HasPrefix(url, "file://"):
 		return &FileRepo{Path: strings.Replace(url, "file://", "", -1)}, nil

@@ -5,8 +5,6 @@ import (
 	"github.com/toasterson/pkg6-go/util"
 	"os"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"path/filepath"
 )
 
@@ -15,22 +13,16 @@ type Catalog struct {
 	LastModified        string `json:"last-modified"`
 	PackageCount        int `json:"package-count"`
 	PackageVersionCount int `json:"package-version-count"`
-	Parts               map[string]map[string]string `json:"parts"`
-	Updates             map[string]map[string]string `json:"updates"`
+	Parts               map[string]CatalogPart`json:"parts"`
+	Updates             map[string]CatalogPart `json:"updates"`
 	Version             int `json:"version"`
 	Packages            map[string][]packageinfo.PackageInfo
 	Signature           Signature `json:"_SIGNATURE"`
 }
 
-type Signature struct {
-	SHA1 string `json:"sha-1"`
-}
-
-func (s *Signature) Check(signature string) error{
-	if s.SHA1 == signature {
-		return nil
-	}
-	return errors.New(fmt.Sprintf("Signature check failed %s != %s", s.SHA1, signature))
+type CatalogPart struct {
+	LastModified        string `json:"last-modified"`
+	Signature           string `json:"signature-sha-1"`
 }
 
 func (c *Catalog) LoadFromV1(location string){
@@ -41,7 +33,7 @@ func (c *Catalog) LoadFromV1(location string){
 	err2 := decoder.Decode(&c)
 	util.Panic(err2, "Decoding Catalog")
 	for key, value := range c.Parts {
-		c.loadV1Part(location+"/"+key, Signature{value["signature-sha-1"]})
+		c.loadV1Part(location+"/"+key, Signature{value.Signature})
 	}
 }
 
@@ -59,7 +51,7 @@ func (c *Catalog) loadV1Part(location string, signature Signature){
 	for k := range anything {
 		switch k {
 		case "_SIGNATURE": {
-			util.Panic(signature.Check(anything[k]["sha-1"].(string)), "Checking Signature")
+			signature.Check(anything[k]["sha-1"].(string))
 		}
 		default : {
 			for packname, tmp := range anything[k]{

@@ -149,6 +149,10 @@ func (r FileRepo) AddPackage(info packageinfo.PackageInfo) error {
 	return nil
 }
 
+func (r FileRepo) Search(params map[string]string, query string) string {
+	return ""
+}
+
 func (r FileRepo) Save() (err error) {
 	file, err := os.Create(filepath.Join(r.Path, "repository.json"))
 	defer func() {
