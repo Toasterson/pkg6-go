@@ -23,11 +23,11 @@ func LoadCatalogV1(location string, catalog *Catalog) (err error) {
 		return err
 	}
 	for key, value := range catalog.Parts {
-		loadV1Part(filepath.Join(location, key), catalog, Signature{SHA1: value["signature-sha-1"]})
+		loadV1Part(filepath.Join(location, key), catalog, Signature{SHA1: value.Signature})
 	}
 	catalog.Parts = nil
 	for key, value := range catalog.Updates {
-		loadV1Part(filepath.Join(location, key), catalog, Signature{SHA1: value["signature-sha-1"]})
+		loadV1Part(filepath.Join(location, key), catalog, Signature{SHA1: value.Signature})
 	}
 	catalog.Updates = nil
 	return
