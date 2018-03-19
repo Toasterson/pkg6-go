@@ -1,12 +1,14 @@
-package main
+package depotd
 
-import "net/http"
+import (
+	"github.com/labstack/echo"
+)
 
-func handleCatalogV0(w http.ResponseWriter, r *http.Request) {
-
+func (d *DepotServer)handleCatalogV0(c echo.Context) error {
+	return nil
 }
 
 
-func handleCatalogV1(w http.ResponseWriter, r *http.Request) {
-
+func (d *DepotServer)handleCatalogV1(c echo.Context) error {
+	return nil
 }

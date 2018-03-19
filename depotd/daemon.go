@@ -1,26 +1,43 @@
-package main
+package depotd
 
 import (
-	"github.com/gorilla/mux"
-	"github.com/minio/minio/pkg/http"
+	"fmt"
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
+	"github.com/toasterson/pkg6-go/repo"
 )
 
-var router *mux.Router
-
-func init() {
-	router = mux.NewRouter()
-	router.HandleFunc("/versions/0/", handleVersionsV0)
-	router.HandleFunc("/{publisher}/search/0/{query}", handleSearchV0)
-	router.HandleFunc("/{publisher}/search/1/{casesensitive}_{returntype}_{maxreturn}_{startreturn}_{query}", handleSearchV1)
-	router.HandleFunc("/{publisher}/catalog/0/{catalog}", handleCatalogV0)
-	router.HandleFunc("/{publisher}/catalog/1/{catalog}", handleCatalogV1)
+type DepotServer struct {
+	*echo.Echo
+	repo.Repository
 }
 
-func main() {
-	server := http.NewServer([]string{"0.0.0.0:8080"}, router, nil)
-	err := server.ListenAndServe()
-	if err != nil{
-		panic(err)
+func NewDepotServer(repository string) (depot *DepotServer) {
+	if r, err := repo.NewRepo(repository); err != nil {
+		panic(fmt.Errorf("can not instantiate depotserver: %s", err))
+	} else {
+		depot = &DepotServer{
+			Echo:       echo.New(),
+			Repository: r,
+		}
 	}
+	depot.setupMiddleware()
+	depot.mountPublicEndpoints()
+	return
 }
 
+func (d *DepotServer) mountPublicEndpoints() {
+	d.GET("/versions/0/", d.handleVersionsV0)
+	d.GET("/:publisher/search/0/:query", d.handleSearchV0)
+	d.GET("/:publisher/search/1/:casesensitive_:returntype_:maxreturn_:startreturn_:query", d.handleSearchV1)
+	d.GET("/:publisher/catalog/0", d.handleCatalogV0)
+	d.GET("/:publisher/catalog/1/:catalog", d.handleCatalogV1)
+	d.GET("/:publisher/manifest/0/:manifest", d.handleManifestV0)
+	d.GET("/:publisher/file/1/:fileSHA1", d.handleFileV1)
+	d.GET("/:publisher/p5i/0/:fmri", d.handleP5IV0)
+}
+
+func (d *DepotServer) setupMiddleware() {
+	d.Use(middleware.Logger())
+	d.Use(middleware.Recover())
+}

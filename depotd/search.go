@@ -1,17 +1,20 @@
-package main
+package depotd
 
-import "net/http"
+import (
+	"github.com/labstack/echo"
+)
 
 /*
 The main difference between search 0 and 1 seems to be that 0 reports all the details in the request while 1 leaves some details to be read by the client from disk.
 */
 
-func handleSearchV0(w http.ResponseWriter, r *http.Request) {
-
+func (d *DepotServer)handleSearchV0(c echo.Context) error {
+	return nil
 }
 
 /*
 /{publisher}/search/0/{query}
+query is p<:::vim> where gnu is the search string
 pkg.summary pkg:/library/augeas-vim@1.4.0,5.11-2017.0.0.1:20170306T182239Z set Augeas-Tools is a configuration-file editing C library and shell toolkit - ViM editor binding
 pkg.description pkg:/editor/vim@8.0.104,5.11-2017.0.0.2:20170306T113401Z set Vim is a clone of the Unix editor 'vi'.  It is a modal text editor with support for syntax highlighting, context-sensitive indentation, and extension scripting in numerous languages.
 pkg.description pkg:/editor/vim@8.0.104,5.11-2017.0.0.2:20170609T180153Z set Vim is a clone of the Unix editor 'vi'.  It is a modal text editor with support for syntax highlighting, context-sensitive indentation, and extension scripting in numerous languages.
@@ -29,8 +32,8 @@ pkg.fmri pkg:/editor/vim@8.0.104,5.11-2017.0.0.2:20170306T113401Z set openindian
 pkg.fmri pkg:/editor/vim@8.0.104,5.11-2017.0.0.2:20170609T180153Z set openindiana.org/editor/vim
 */
 
-func handleSearchV1(w http.ResponseWriter, r *http.Request) {
-
+func (d *DepotServer)handleSearchV1(c echo.Context) error {
+	return nil
 }
 
 /*
@@ -42,6 +45,8 @@ pkg_name being the package name
 action_name being the type of action to search e.g. dir,file etc.
 index being the attribute of the action to search
 token being the search string wildcads like * and ? are supported.
+casesensitive is for switching casesensitivity on and of
+maxreturn and startreturn are for pageing
 /openindiana.org/search/1/False_1_None_None_p%3C%3A%3A%3Agnupg%3E
 Return from search v1
 0 1 pkg:/crypto/gnupg@2.0.30,5.11-2017.0.0.0:20170306T211520Z

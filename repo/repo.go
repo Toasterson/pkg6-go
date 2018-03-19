@@ -20,7 +20,7 @@ type Repository interface {
 	Destroy() error
 	Upgrade() error
 	GetVersion() int
-	GetCatalog(publisher string) catalog.Catalog
+	GetCatalog(publisher string) *catalog.V1Catalog
 	Search(params map[string]string, query string) string
 	AddPackage(info packageinfo.PackageInfo) error
 }

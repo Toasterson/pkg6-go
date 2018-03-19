@@ -18,8 +18,8 @@ type FileRepo struct {
 	TrustAnchorDirectory       string
 	CheckCertificateRevocation bool
 	SignatureRequiredNames     []string
-	Publishers                 []string                   `json:"-"`
-	Catalogs                   map[string]catalog.Catalog `json:"-"`
+	Publishers                 []string                      `json:"-"`
+	Catalogs                   map[string]*catalog.V1Catalog `json:"-"`
 }
 
 func (r FileRepo) GetPath() string {
@@ -41,15 +41,15 @@ func (r FileRepo) Load() error {
 	r.CheckCertificateRevocation = repoCFG.Key("check-certificate-revocation").MustBool()
 	r.TrustAnchorDirectory = repoCFG.Key("trust-anchor-directory").MustString("/etc/certs/CA/")
 	//TODO Full Load of Config as described in Documentation
-	r.Catalogs = make(map[string]catalog.Catalog)
+	r.Catalogs = make(map[string]*catalog.V1Catalog)
 	for _, pub := range r.Publishers {
 		catalogPath := filepath.Join(r.Path, "publisher", pub, "catalog")
-		cat := catalog.Catalog{}
+		cat := catalog.NewV1Catalog(catalogPath)
 		switch r.Version {
 		case 4:
-			cat.LoadFromV1(catalogPath)
+			cat.LoadFromV1()
 		case 5:
-			cat.Load(catalogPath)
+			cat.Load()
 		}
 		r.Catalogs[pub] = cat
 	}
@@ -69,10 +69,6 @@ func (r FileRepo) Upgrade() error {
 			if err := pkg.UpgradeFormat(pkgPath); err != nil {
 				return err
 			}
-		}
-		cat := r.Catalogs[pub]
-		if err := cat.Upgrade(filepath.Join(r.Path, "publisher", pub, "catalog")); err != nil {
-			return err
 		}
 	}
 	return r.Save()
@@ -137,7 +133,7 @@ func (r FileRepo) GetPackage(fmri string) (packageinfo.PackageInfo, error) {
 	return pkg, nil
 }
 
-func (r FileRepo) GetCatalog(publisher string) catalog.Catalog {
+func (r FileRepo) GetCatalog(publisher string) *catalog.V1Catalog {
 	return r.Catalogs[publisher]
 }
 
