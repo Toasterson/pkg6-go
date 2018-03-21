@@ -30,9 +30,9 @@ type PackageInfo struct {
 	Licenses         []action.LicenseAction   `json:"licenses"`
 }
 
-func (p PackageInfo) SetFmri(fmri string) error {
+func (p *PackageInfo) SetFmri(fmri string) error {
 	if !strings.HasPrefix(fmri, "pkg://") {
-		return errors.New("invalid FMRI given")
+		return errors.New("Invalid FMRI given")
 	}
 	mapFMRI := p.SplitFmri(fmri)
 	p.Publisher = mapFMRI["publisher"]
@@ -44,48 +44,45 @@ func (p PackageInfo) SetFmri(fmri string) error {
 	return nil
 }
 
-func (p PackageInfo) GetFmri() string {
-	return fmt.Sprintf("pkg:/%s@%s,%s-%s:%s", p.Name, p.ComponentVersion.ToVersionString(), p.BuildVersion, p.BranchVersion, p.PackagingDate)
-}
-
-func (p PackageInfo) SplitFmri(fmri string) map[string]string {
+func (p *PackageInfo) SplitFmri(fmri string) map[string]string {
 	var mapFMRI = map[string]string{}
-	if strings.HasPrefix(fmri, "pkg://") {
-		fmri = strings.Replace(fmri, "pkg://", "", 1)
-		tmp := strings.SplitN(fmri, "/", 2)
+	tmpFMRI := fmri
+	if strings.HasPrefix(tmpFMRI, "pkg://") {
+		tmpFMRI = strings.Replace(tmpFMRI, "pkg://", "", 1)
+		tmp := strings.SplitN(tmpFMRI, "/", 2)
 		mapFMRI["publisher"] = tmp[0]
-		fmri = tmp[1]
+		tmpFMRI = tmp[1]
 	} else {
-		fmri = strings.Replace(fmri, "pkg:/", "", -1)
+		tmpFMRI = strings.Replace(tmpFMRI, "pkg:/", "", -1)
 	}
-	tmpName := strings.SplitN(fmri, "@", 2)
+	tmpName := strings.SplitN(tmpFMRI, "@", 2)
 	mapFMRI["name"] = tmpName[0]
-	fmri = tmpName[1]
+	tmpFMRI = tmpName[1]
 
-	tmpVersion := strings.SplitN(fmri, ",", 2)
+	tmpVersion := strings.SplitN(tmpFMRI, ",", 2)
 	mapFMRI["version"] = tmpVersion[0]
-	fmri = tmpVersion[1]
+	tmpFMRI = tmpVersion[1]
 
-	tmpBuild := strings.SplitN(fmri, "-", 2)
+	tmpBuild := strings.SplitN(tmpFMRI, "-", 2)
 	mapFMRI["build_release"] = tmpBuild[0]
-	fmri = tmpBuild[1]
+	tmpFMRI = tmpBuild[1]
 
-	tmpBranch := strings.SplitN(fmri, ":", 2)
+	tmpBranch := strings.SplitN(tmpFMRI, ":", 2)
 	mapFMRI["branch"] = tmpBranch[0]
-	fmri = tmpBranch[1]
+	tmpFMRI = tmpBranch[1]
 
-	mapFMRI["packaging_date"] = fmri
+	mapFMRI["packaging_date"] = tmpFMRI
 	return mapFMRI
 }
 
-func (p PackageInfo) SetPackagingDate(datestring string) {
+func (p *PackageInfo) SetPackagingDate(datestring string) {
 	t, err := time.Parse("20060102T150405Z", datestring)
 	if err == nil {
 		p.PackagingDate = t
 	}
 }
 
-func (p PackageInfo) FromMap(packMap map[string]interface{}) {
+func (p *PackageInfo) FromMap(packMap map[string]interface{}) {
 	for key, value := range packMap {
 		switch key {
 		case "version":
@@ -99,14 +96,14 @@ func (p PackageInfo) FromMap(packMap map[string]interface{}) {
 		case "actions":
 			{
 				for _, loopVal := range value.([]interface{}) {
-					actString := loopVal.(string)
-					if strings.Contains(actString, "set") {
+					act_string := loopVal.(string)
+					if strings.Contains(act_string, "set") {
 						attr := action.AttributeAction{}
-						attr.FromActionString(actString)
+						attr.FromActionString(act_string)
 						p.Attributes = append(p.Attributes, attr)
-					} else if strings.Contains(actString, "depend") {
+					} else if strings.Contains(act_string, "depend") {
 						dep := action.DependAction{}
-						dep.FromActionString(actString)
+						dep.FromActionString(act_string)
 						p.Dependencies = append(p.Dependencies, dep)
 					}
 				}
@@ -119,7 +116,7 @@ func (p PackageInfo) FromMap(packMap map[string]interface{}) {
 	}
 }
 
-func (p PackageInfo) CompareVersion(p2 PackageInfo) string {
+func (p *PackageInfo) CompareVersion(p2 PackageInfo) string {
 	if p.ComponentVersion.LesserThan(p2.ComponentVersion) {
 		if p.PackagingDate.Before(p2.PackagingDate) {
 			return "lesser"
@@ -135,7 +132,7 @@ func (p PackageInfo) CompareVersion(p2 PackageInfo) string {
 	}
 }
 
-func (p PackageInfo) Merge(p2 *PackageInfo) {
+func (p *PackageInfo) Merge(p2 *PackageInfo) {
 	p.Summary = p2.Summary
 	p.Description = p2.Description
 	for _, val := range p2.Attributes {
@@ -146,14 +143,13 @@ func (p PackageInfo) Merge(p2 *PackageInfo) {
 	}
 }
 
-func (p PackageInfo) ReadManifest(location string) (err error) {
-	foldername := strings.Replace(p.Name, "/", "%2F", -1)
-	filename := p.ComponentVersion.ToVersionString() + "%2C" + p.BuildVersion + "-" + p.BranchVersion + "%3A" + p.PackagingDate.Format("20060102T150405Z")
-	path := location + "/publisher/" + p.Publisher + "/pkg/" + foldername + "/" + filename
+func (p *PackageInfo) ReadManifest(location string) error {
+	path := location + "/" + FMRI2Unicode(p)
 	file, err := os.Open(path)
-	defer func() {
-		err = file.Close()
-	}()
+	defer file.Close()
+	if err != nil {
+		return err
+	}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		text := scanner.Text()
@@ -177,28 +173,61 @@ func (p PackageInfo) ReadManifest(location string) (err error) {
 			linkAction := action.LinkAction{}
 			linkAction.FromActionString(text)
 			p.Links = append(p.Links, linkAction)
+		} else {
+			return fmt.Errorf("uknown Action in %p: %a", p.Name, text)
 		}
 	}
-	return err
+	return nil
 }
 
-func (p PackageInfo) Save(location string) (err error) {
+func (p *PackageInfo) GetFMRI() string {
+	return p.Name + "@" + p.ComponentVersion.ToVersionString() + "," + p.BuildVersion + "-" + p.BranchVersion + ":" + p.PackagingDate.Format("20060102T150405Z")
+}
+
+func (p *PackageInfo) DropManifest(location string) error {
+	return os.Remove(location + "/" + FMRI2Unicode(p))
+}
+
+func (p *PackageInfo) UpgradeFormat(location string) error {
+	if err := p.Save(location); err != nil {
+		return err
+	}
+	return p.DropManifest(location)
+}
+
+func (p *PackageInfo) Save(location string) error {
 	b, err := json.Marshal(p)
 	if err != nil {
-		return fmt.Errorf("cannot Marshal %s: %e", p.Name, err)
+		return errors.New(fmt.Sprintf("Cannot Marshal %s", p.Name))
 	}
-	foldername := strings.Replace(p.Name, "/", "%2F", -1)
-	filename := p.ComponentVersion.ToVersionString() + "%2C" + p.BuildVersion + "-" + p.BranchVersion + "%3A" + p.PackagingDate.Format("20060102T150405Z") + ".json"
-	path := location + "/publisher/" + p.Publisher + "/pkg/" + foldername + "/" + filename
+	path := location + "/" + FMRI2Unicode(p) + ".json"
 	file, ferr := os.OpenFile(path, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0666)
-	defer func() {
-		err = file.Close()
-	}()
 	if ferr != nil {
-		err = fmt.Errorf("error Saving %s: %e", p.Name, err)
+		return errors.New(throwError("Saving", p.GetFMRI(), ferr.Error()))
 	}
+	defer file.Close()
 	if _, werr := file.Write(b); werr != nil {
-		err = fmt.Errorf("error Saving %s: %e", p.Name, err)
+		return errors.New(throwError("Saving", p.GetFMRI(), werr.Error()))
 	}
-	return err
+	return nil
+}
+
+func (p *PackageInfo) Load(location string) error {
+	path := location + "/" + FMRI2Unicode(p) + ".json"
+	file, ferr := os.OpenFile(path, os.O_RDONLY, 0666)
+	if ferr != nil {
+		return errors.New(throwError("Loading", p.GetFMRI(), ferr.Error()))
+	}
+	defer file.Close()
+	var b = []byte{}
+	_, rerr := file.Read(b)
+	if rerr != nil {
+		return errors.New(throwError("Loading", p.GetFMRI(), rerr.Error()))
+	}
+	return json.Unmarshal(b, p)
+}
+
+func (p *PackageInfo) WriteManifest() string {
+
+	return ""
 }

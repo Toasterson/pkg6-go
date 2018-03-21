@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-ini/ini"
-	"github.com/toasterson/pkg6-go/catalog"
-	"github.com/toasterson/pkg6-go/packageinfo"
+	"github.com/toasterson/pkg6-go/metadata"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -18,8 +17,8 @@ type FileRepo struct {
 	TrustAnchorDirectory       string
 	CheckCertificateRevocation bool
 	SignatureRequiredNames     []string
-	Publishers                 []string                      `json:"-"`
-	Catalogs                   map[string]*catalog.V1Catalog `json:"-"`
+	Publishers                 []string                       `json:"-"`
+	Catalogs                   map[string]*metadata.V1Catalog `json:"-"`
 }
 
 func (r FileRepo) GetPath() string {
@@ -41,16 +40,11 @@ func (r FileRepo) Load() error {
 	r.CheckCertificateRevocation = repoCFG.Key("check-certificate-revocation").MustBool()
 	r.TrustAnchorDirectory = repoCFG.Key("trust-anchor-directory").MustString("/etc/certs/CA/")
 	//TODO Full Load of Config as described in Documentation
-	r.Catalogs = make(map[string]*catalog.V1Catalog)
+	r.Catalogs = make(map[string]*metadata.V1Catalog)
 	for _, pub := range r.Publishers {
 		catalogPath := filepath.Join(r.Path, "publisher", pub, "catalog")
-		cat := catalog.NewV1Catalog(catalogPath)
-		switch r.Version {
-		case 4:
-			cat.LoadFromV1()
-		case 5:
-			cat.Load()
-		}
+		cat := metadata.NewV1Catalog(catalogPath)
+		cat.Load()
 		r.Catalogs[pub] = cat
 	}
 	return nil
@@ -58,20 +52,6 @@ func (r FileRepo) Load() error {
 
 func (r FileRepo) Destroy() error {
 	return os.RemoveAll(r.GetPath())
-}
-
-func (r FileRepo) Upgrade() error {
-	for _, pub := range r.Publishers {
-		pkgPath := filepath.Join(r.Path, "publisher", pub, "pkg")
-		for _, pkgFMRI := range r.GetPackageFMRIs(pub, false) {
-			pkg := packageinfo.FromFMRI(pkgFMRI)
-			pkg.ReadManifest(pkgPath)
-			if err := pkg.UpgradeFormat(pkgPath); err != nil {
-				return err
-			}
-		}
-	}
-	return r.Save()
 }
 
 func (r FileRepo) GetPackageFMRIs(publisher string, partial bool) []string {
@@ -82,9 +62,9 @@ func (r FileRepo) GetPackageFMRIs(publisher string, partial bool) []string {
 		manifests, _ := ioutil.ReadDir(filepath.Join(pkgPath, pkg.Name()))
 		for _, manifest := range manifests {
 			if partial {
-				FMRIS = append(FMRIS, "pkg:/"+packageinfo.Unicode2FMRI(pkg.Name()+"@"+manifest.Name()))
+				FMRIS = append(FMRIS, "pkg:/"+metadata.Unicode2FMRI(pkg.Name()+"@"+manifest.Name()))
 			} else {
-				FMRIS = append(FMRIS, "pkg://"+publisher+"/"+packageinfo.Unicode2FMRI(pkg.Name()+"@"+manifest.Name()))
+				FMRIS = append(FMRIS, "pkg://"+publisher+"/"+metadata.Unicode2FMRI(pkg.Name()+"@"+manifest.Name()))
 			}
 		}
 	}
@@ -115,11 +95,11 @@ func (r FileRepo) GetFile(publisher string, hash string) (*os.File, error) {
 	return file, nil
 }
 
-func (r FileRepo) GetPackage(fmri string) (packageinfo.PackageInfo, error) {
+func (r FileRepo) GetPackage(fmri string) (metadata.PackageInfo, error) {
 	if !strings.Contains(fmri, "pkg://") {
-		return packageinfo.PackageInfo{}, fmt.Errorf("package needs to be with publisher to retrieve from repo")
+		return metadata.PackageInfo{}, fmt.Errorf("package needs to be with publisher to retrieve from repo")
 	}
-	pkg := packageinfo.PackageInfo{}
+	pkg := metadata.PackageInfo{}
 	pkg.SetFmri(fmri)
 	pkgPath := filepath.Join(r.Path, "publisher", pkg.Publisher, "pkg")
 	switch r.Version {
@@ -133,7 +113,7 @@ func (r FileRepo) GetPackage(fmri string) (packageinfo.PackageInfo, error) {
 	return pkg, nil
 }
 
-func (r FileRepo) GetCatalog(publisher string) *catalog.V1Catalog {
+func (r FileRepo) GetCatalog(publisher string) *metadata.V1Catalog {
 	return r.Catalogs[publisher]
 }
 
@@ -141,7 +121,7 @@ func (r FileRepo) GetVersion() int {
 	return r.Version
 }
 
-func (r FileRepo) AddPackage(info packageinfo.PackageInfo) error {
+func (r FileRepo) AddPackage(info metadata.PackageInfo) error {
 	return nil
 }
 

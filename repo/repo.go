@@ -2,15 +2,14 @@ package repo
 
 import (
 	"fmt"
-	"github.com/toasterson/pkg6-go/catalog"
-	"github.com/toasterson/pkg6-go/packageinfo"
+	"github.com/toasterson/pkg6-go/metadata"
 	"os"
 	"strings"
 )
 
 type Repository interface {
 	GetFile(publisher string, hash string) (*os.File, error)
-	GetPackage(fmri string) (packageinfo.PackageInfo, error)
+	GetPackage(fmri string) (metadata.PackageInfo, error)
 	GetPath() string
 	GetPublishers() []string
 	GetPackageFMRIs(publisher string, partial bool) []string
@@ -18,17 +17,23 @@ type Repository interface {
 	Load() error
 	Save() (err error)
 	Destroy() error
-	Upgrade() error
 	GetVersion() int
-	GetCatalog(publisher string) *catalog.V1Catalog
+	GetCatalog(publisher string) *metadata.V1Catalog
 	Search(params map[string]string, query string) string
-	AddPackage(info packageinfo.PackageInfo) error
+	AddPackage(info metadata.PackageInfo) error
 }
 
 func NewRepo(url string) (Repository, error) {
 	switch {
 	case strings.HasPrefix(url, "file://"):
-		return &FileRepo{Path: strings.Replace(url, "file://", "", -1)}, nil
+		if stat, err := os.Stat(strings.Replace(url, "file://", "", -1)); err != nil {
+			return nil, err
+		} else if stat.IsDir() {
+			return &FileRepo{Path: strings.Replace(url, "file://", "", -1)}, nil
+		} else if stat.Mode().IsRegular() {
+			return nil, fmt.Errorf("p5p format not implemented yet")
+		}
+		return nil, fmt.Errorf("%s is nether dir, symlink or regular file", url)
 	case strings.HasPrefix(url, "http://"):
 		fallthrough
 	case strings.HasPrefix(url, "https://"):
