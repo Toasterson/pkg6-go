@@ -7,31 +7,33 @@ import (
 )
 
 type V1Catalog struct {
-	Location            string                        `json:"-"`
-	Created             string                        `json:"created"`
-	LastModified        string                        `json:"last-modified"`
-	PackageCount        int                           `json:"package-count"`
-	PackageVersionCount int                           `json:"package-version-count"`
-	Parts               map[string]CatalogPart        `json:"parts"`
-	V1PartContent       map[string]*V1CatalogPartFile `json:"-"`
-	Updates             map[string]CatalogPart        `json:"updates"`
-	Version             int                           `json:"version"`
-	Packages            map[string][]PackageInfo      `json:"-"`
-	Signature           Signature                     `json:"_SIGNATURE"`
+	Location            string                          `json:"-"`
+	Created             V1CatalogTimeStamp              `json:"created"`
+	LastModified        V1CatalogTimeStamp              `json:"last-modified"`
+	PackageCount        int                             `json:"package-count"`
+	PackageVersionCount int                             `json:"package-version-count"`
+	Parts               map[string]CatalogPart          `json:"parts"`
+	V1PartContent       map[string]*V1CatalogPartFile   `json:"-"`
+	Updates             map[string]CatalogPart          `json:"updates"`
+	V1UpdateContent     map[string]*V1CatalogUpdateFile `json:"-"`
+	Version             int                             `json:"version"`
+	Packages            map[string][]PackageInfo        `json:"-"`
+	Signature           Signature                       `json:"_SIGNATURE"`
 }
 
 type CatalogPart struct {
-	LastModified string `json:"last-modified"`
-	Signature    string `json:"signature-sha-1"`
+	LastModified V1CatalogTimeStamp `json:"last-modified"`
+	Signature    string             `json:"signature-sha-1"`
 }
 
 func NewV1Catalog(location string) *V1Catalog {
 	return &V1Catalog{
-		Location:      location,
-		Parts:         make(map[string]CatalogPart),
-		V1PartContent: make(map[string]*V1CatalogPartFile),
-		Updates:       make(map[string]CatalogPart),
-		Packages:      make(map[string][]PackageInfo),
+		Location:        location,
+		Parts:           make(map[string]CatalogPart),
+		V1PartContent:   make(map[string]*V1CatalogPartFile),
+		V1UpdateContent: make(map[string]*V1CatalogUpdateFile),
+		Updates:         make(map[string]CatalogPart),
+		Packages:        make(map[string][]PackageInfo),
 	}
 }
 
@@ -50,6 +52,15 @@ func (c *V1Catalog) Load() error {
 			return err
 		}
 		if c.V1PartContent[part], err = DeSerializeV1Part(partContent); err != nil {
+			return err
+		}
+	}
+	for up := range c.Updates {
+		var upContent []byte
+		if upContent, err = ioutil.ReadFile(filepath.Join(c.Location, up)); err != nil {
+			return err
+		}
+		if c.V1UpdateContent[up], err = DeSerializeV1Update(upContent); err != nil {
 			return err
 		}
 	}
@@ -73,11 +84,27 @@ func (c *V1Catalog) Save() error {
 			return err
 		}
 	}
+	for update := range c.Updates {
+		if serialized, err = c.SerializeV1Update(update); err != nil {
+			return err
+		}
+		if err = ioutil.WriteFile(filepath.Join(c.Location, update), serialized, 0644); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (c *V1Catalog) SerializeV1Part(part string) ([]byte, error) {
 	if blob, err := json.Marshal(c.V1PartContent[part]); err != nil {
+		return nil, err
+	} else {
+		return blob, nil
+	}
+}
+
+func (c *V1Catalog) SerializeV1Update(update string) ([]byte, error) {
+	if blob, err := json.Marshal(c.V1UpdateContent[update]); err != nil {
 		return nil, err
 	} else {
 		return blob, nil
@@ -90,6 +117,14 @@ func DeSerializeV1Part(partBlob []byte) (file *V1CatalogPartFile, err error) {
 		return nil, err
 	}
 	return partFile, nil
+}
+
+func DeSerializeV1Update(blob []byte) (file *V1CatalogUpdateFile, err error) {
+	updateFile := &V1CatalogUpdateFile{}
+	if err = json.Unmarshal(blob, &updateFile); err != nil {
+		return nil, err
+	}
+	return updateFile, nil
 }
 
 func (c *V1Catalog) AddPackage(pkg *PackageInfo) (err error) {
