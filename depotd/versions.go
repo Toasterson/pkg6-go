@@ -1,16 +1,17 @@
-package main
+package depotd
 
 import (
-	"net/http"
 	"fmt"
+	"github.com/labstack/echo"
+	"net/http"
 )
 
-type version_t map[string][]int
+type versionType map[string][]int
 
-var versions version_t
+var versions versionType
 
 func init() {
-	versions = version_t{
+	versions = versionType{
 		"info":      []int{0},
 		"index":     []int{0},
 		"search":    []int{0, 1},
@@ -20,7 +21,7 @@ func init() {
 		"versions":  []int{0},
 		"catalog":   []int{0, 1},
 		"filelist":  []int{0},
-		"manifest":  []int{0},
+		"manifest":  []int{0, 1},
 		"add":       []int{0},
 		"status":    []int{0},
 		"file":      []int{0, 1},
@@ -31,9 +32,10 @@ func init() {
 	}
 }
 
-func handleVersionsV0(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("pkg-server 6.0+git"))
-	for k,v := range versions{
-		w.Write([]byte(fmt.Sprintf("%s %v\n", k, v)))
+func (d *DepotServer) handleVersionsV0(c echo.Context) error {
+	output := "pkg-server 6.0+git"
+	for k, v := range versions {
+		output += fmt.Sprintf("\n%s %v\n", k, v)
 	}
+	return c.String(http.StatusOK, output)
 }

@@ -1,15 +1,15 @@
 package packageinfo
 
 import (
-	"time"
-	"github.com/toasterson/pkg6-go/action"
-	"strings"
-	"github.com/toasterson/pkg6-go/util"
-	"errors"
 	"bufio"
-	"os"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/toasterson/pkg6-go/action"
+	"github.com/toasterson/pkg6-go/util"
+	"os"
+	"strings"
+	"time"
 )
 
 func FromFMRI(fmri string) PackageInfo {
@@ -19,25 +19,25 @@ func FromFMRI(fmri string) PackageInfo {
 }
 
 type PackageInfo struct {
-	Publisher        string `json:"publisher,-"`
-	Name             string `json:"name"`
-	ComponentVersion Version `json:"version"`
-	BuildVersion     string `json:"build"`
-	BranchVersion    string `json:"branch"`
-	PackagingDate    time.Time `json:"packaging_date"`
-	SignatureSHA1    string `json:"signature-sha-1"`
-	Summary          string `json:"summary"`
-	Description      string `json:"description"`
-	Classification   []string `json:"classification"`
+	Publisher        string                   `json:"publisher,-"`
+	Name             string                   `json:"name"`
+	ComponentVersion Version                  `json:"version"`
+	BuildVersion     string                   `json:"build"`
+	BranchVersion    string                   `json:"branch"`
+	PackagingDate    time.Time                `json:"packaging_date"`
+	SignatureSHA1    string                   `json:"signature-sha-1"`
+	Summary          string                   `json:"summary"`
+	Description      string                   `json:"description"`
+	Classification   []string                 `json:"classification"`
 	Attributes       []action.AttributeAction `json:"attributes"`
-	Dependencies     []action.DependAction `json:"dependencies"`
+	Dependencies     []action.DependAction    `json:"dependencies"`
 	Directories      []action.DirectoryAction `json:"directories"`
-	Files            []action.FileAction `json:"files"`
-	Links		[]action.LinkAction `json:"links"`
-	Licenses	[]action.LicenseAction `json:"licenses"`
+	Files            []action.FileAction      `json:"files"`
+	Links            []action.LinkAction      `json:"links"`
+	Licenses         []action.LicenseAction   `json:"licenses"`
 }
 
-func (p *PackageInfo) SetFmri(fmri string) (error) {
+func (p *PackageInfo) SetFmri(fmri string) error {
 	if !strings.HasPrefix(fmri, "pkg://") {
 		return errors.New("Invalid FMRI given")
 	}
@@ -51,7 +51,7 @@ func (p *PackageInfo) SetFmri(fmri string) (error) {
 	return nil
 }
 
-func (p *PackageInfo) SplitFmri(fmri string) (map[string]string) {
+func (p *PackageInfo) SplitFmri(fmri string) map[string]string {
 	var mapFMRI = map[string]string{}
 	tmpFMRI := fmri
 	if strings.HasPrefix(tmpFMRI, "pkg://") {
@@ -158,11 +158,11 @@ func (p *PackageInfo) ReadManifest(location string) error {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		text := scanner.Text()
-		if strings.HasPrefix(text, "set"){
+		if strings.HasPrefix(text, "set") {
 			attr := action.AttributeAction{}
 			attr.FromActionString(text)
 			p.Attributes = append(p.Attributes, attr)
-		} else if strings.HasPrefix(text, "depend"){
+		} else if strings.HasPrefix(text, "depend") {
 			dep := action.DependAction{}
 			dep.FromActionString(text)
 			p.Dependencies = append(p.Dependencies, dep)
@@ -170,11 +170,11 @@ func (p *PackageInfo) ReadManifest(location string) error {
 			fileAction := action.FileAction{}
 			fileAction.FromActionString(text)
 			p.Files = append(p.Files, fileAction)
-		} else if strings.HasPrefix(text, "license"){
+		} else if strings.HasPrefix(text, "license") {
 			lic := action.LicenseAction{}
 			lic.FromActionString(text)
 			p.Licenses = append(p.Licenses, lic)
-		} else if strings.HasPrefix(text, "link"){
+		} else if strings.HasPrefix(text, "link") {
 			linkAction := action.LinkAction{}
 			linkAction.FromActionString(text)
 			p.Links = append(p.Links, linkAction)
@@ -185,51 +185,56 @@ func (p *PackageInfo) ReadManifest(location string) error {
 	return nil
 }
 
-func (p *PackageInfo)getFMRI()string{
+func (p *PackageInfo) getFMRI() string {
 	return p.Name + "@" + p.ComponentVersion.ToVersionString() + "," + p.BuildVersion + "-" + p.BranchVersion + ":" + p.PackagingDate.Format("20060102T150405Z")
 }
 
-func (p *PackageInfo)DropManifest(location string) error {
-	return os.Remove(location+"/"+FMRI2Unicode(p))
+func (p *PackageInfo) DropManifest(location string) error {
+	return os.Remove(location + "/" + FMRI2Unicode(p))
 }
 
-func (p *PackageInfo)UpgradeFormat(location string) error {
+func (p *PackageInfo) UpgradeFormat(location string) error {
 	if err := p.Save(location); err != nil {
 		return err
 	}
 	return p.DropManifest(location)
 }
 
-func (p *PackageInfo)Save(location string) error{
+func (p *PackageInfo) Save(location string) error {
 	b, err := json.Marshal(p)
-	if err != nil{
+	if err != nil {
 		return errors.New(fmt.Sprintf("Cannot Marshal %s", p.Name))
 	}
-	path := location+"/"+FMRI2Unicode(p)+".json"
-	file, ferr := os.OpenFile(path, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0666 )
+	path := location + "/" + FMRI2Unicode(p) + ".json"
+	file, ferr := os.OpenFile(path, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0666)
 	if ferr != nil {
 		return errors.New(throwError("Saving", p.getFMRI(), ferr.Error()))
 	}
 	defer file.Close()
-	if _, werr := file.Write(b); werr != nil{
+	if _, werr := file.Write(b); werr != nil {
 		return errors.New(throwError("Saving", p.getFMRI(), werr.Error()))
 	}
 	return nil
 }
 
-func (p *PackageInfo)Load(location string) error{
-	path := location + "/"+ FMRI2Unicode(p)+".json"
-	file, ferr := os.OpenFile(path, os.O_RDONLY, 0666 )
+func (p *PackageInfo) Load(location string) error {
+	path := location + "/" + FMRI2Unicode(p) + ".json"
+	file, ferr := os.OpenFile(path, os.O_RDONLY, 0666)
 	if ferr != nil {
-		return errors.New(throwError("Loading",p.getFMRI(), ferr.Error()))
+		return errors.New(throwError("Loading", p.getFMRI(), ferr.Error()))
 	}
 	defer file.Close()
 	var b = []byte{}
 	_, rerr := file.Read(b)
-	if rerr != nil{
+	if rerr != nil {
 		return errors.New(throwError("Loading", p.getFMRI(), rerr.Error()))
 	}
 	return json.Unmarshal(b, p)
+}
+
+func (p *PackageInfo) WriteManifest() string {
+
+	return ""
 }
 
 func throwError(action string, pkg string, err string) string {

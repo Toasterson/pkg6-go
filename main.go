@@ -2,12 +2,11 @@ package main
 
 import (
 	"github.com/toasterson/pkg6-go/repo"
+	"github.com/toasterson/pkg6-go/depotd"
 )
 
-var repoPath = "./sample_data/repo"
+var repoPath = "file://./sample_data/repo"
 
 func main() {
-	repository, _ := repo.NewRepo("file://"+repoPath)
-	repository.Load()
-	repository.Upgrade()
+	depotd.NewDepotServer(repoPath).Start(":8080")
 }
