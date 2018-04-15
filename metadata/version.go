@@ -1,4 +1,4 @@
-package packageinfo
+package metadata
 
 import (
 	"strings"
