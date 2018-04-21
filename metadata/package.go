@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -184,17 +185,6 @@ func (p *PackageInfo) GetFMRI() string {
 	return p.Name + "@" + p.ComponentVersion.ToVersionString() + "," + p.BuildVersion + "-" + p.BranchVersion + ":" + p.PackagingDate.Format("20060102T150405Z")
 }
 
-func (p *PackageInfo) DropManifest(location string) error {
-	return os.Remove(location + "/" + FMRI2Unicode(p))
-}
-
-func (p *PackageInfo) UpgradeFormat(location string) error {
-	if err := p.Save(location); err != nil {
-		return err
-	}
-	return p.DropManifest(location)
-}
-
 func (p *PackageInfo) Save(location string) error {
 	b, err := json.Marshal(p)
 	if err != nil {
@@ -227,7 +217,42 @@ func (p *PackageInfo) Load(location string) error {
 	return json.Unmarshal(b, p)
 }
 
-func (p *PackageInfo) WriteManifest() string {
+func (p PackageInfo) WriteManifest() string {
+	buff := bytes.NewBufferString("")
+	for _, attr := range p.Attributes {
+		buff.WriteString(fmt.Sprintf("set name=%s", attr.Name))
+		for _, val := range attr.Values {
+			buff.WriteString(fmt.Sprintf(" value=\"%s\"", val))
+		}
+		if len(attr.Optionals) > 0 {
+			for optKey, optValue := range attr.Optionals {
+				buff.WriteString(fmt.Sprintf(" %s=\"%s\"", optKey, optValue))
+			}
+		}
+		buff.WriteString("\n")
+	}
+	for _, dir := range p.Directories {
+		buff.WriteString(fmt.Sprintf("dir group=%s mode=%s owner=%s path=\"%s\"", dir.Group, dir.Mode, dir.Owner, dir.Path))
+		if len(dir.Facets) > 0 {
+			for key, val := range dir.Facets {
+				buff.WriteString(fmt.Sprintf("%s=%s", key, val))
+			}
+		}
+		buff.WriteString("\n")
+	}
+	/*
+		for _, file := range p.Files {
 
-	return ""
+		}
+		for _, link := range p.Links {
+
+		}
+		for _, license := range p.Licenses {
+
+		}
+		for _, dep := range p.Dependencies {
+
+		}
+	*/
+	return buff.String()
 }
