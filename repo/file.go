@@ -13,6 +13,7 @@ import (
 
 type FileRepo struct {
 	Path                       string `json:"-"`
+	IsMirror                   bool   `json:"-"`
 	Version                    int
 	TrustAnchorDirectory       string
 	CheckCertificateRevocation bool
@@ -115,6 +116,10 @@ func (r *FileRepo) GetPackage(fmri string) (metadata.PackageInfo, error) {
 
 func (r *FileRepo) GetCatalog(publisher string) *metadata.V1Catalog {
 	return r.Catalogs[publisher]
+}
+
+func (r *FileRepo) GetCatalogFile(publisher, part string) (*os.File, error) {
+	return nil, nil
 }
 
 func (r *FileRepo) GetVersion() int {

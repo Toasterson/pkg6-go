@@ -19,6 +19,7 @@ type Repository interface {
 	Destroy() error
 	GetVersion() int
 	GetCatalog(publisher string) *metadata.V1Catalog
+	GetCatalogFile(publisher, part string) (*os.File, error)
 	Search(params map[string]string, query string) string
 	AddPackage(info metadata.PackageInfo) error
 }
@@ -37,7 +38,7 @@ func NewRepo(url string) (Repository, error) {
 	case strings.HasPrefix(url, "http://"):
 		fallthrough
 	case strings.HasPrefix(url, "https://"):
-		return nil, fmt.Errorf("not implemented")
+		return &HttpRepo{}, nil
 	default:
 		return nil, fmt.Errorf("can not create repo object invalid url")
 	}

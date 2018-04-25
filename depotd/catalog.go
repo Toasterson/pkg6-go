@@ -13,7 +13,7 @@ func (d *DepotServer) handleCatalogV0(c echo.Context) error {
 func (d *DepotServer) handleCatalogV1(c echo.Context) error {
 	catalogPart := c.Param("catalog")
 	publisher := c.Param("publisher")
-	cat := d.Repository.GetCatalog(publisher)
+	cat := d.Repos[0].GetCatalog(publisher)
 	var content interface{}
 	var ok bool
 	if catalogPart == "catalog.attrs" {

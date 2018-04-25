@@ -1,5 +1,11 @@
 package depotd
 
-func (r *RPCDepot) Mirrorpackage(fmri string, reply *string) error {
+type AddMirrorArgs struct {
+	Name       string
+	BaseURL    string
+	Publishers []string
+}
+
+func (r *RPCDepot) AddMirror(args AddMirrorArgs, reply *string) error {
 	return nil
 }
