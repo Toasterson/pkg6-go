@@ -37,8 +37,7 @@ type HttpRepo struct {
 	TrustAnchorDirectory       string
 	CheckCertificateRevocation bool
 	SignatureRequiredNames     []string
-	Publishers                 []string                       `json:"-"`
-	Catalogs                   map[string]*metadata.V1Catalog `json:"-"`
+	Publishers                 []string `json:"-"`
 }
 
 func (r *HttpRepo) loadPublishersFromRemote() (err error) {
@@ -70,7 +69,7 @@ func (r *HttpRepo) GetFile(publisher string, hash string) (*os.File, error) {
 	panic("implement me")
 }
 
-func (r *HttpRepo) GetPackage(fmri string) (metadata.PackageInfo, error) {
+func (r *HttpRepo) GetPackage(fmri string) (*metadata.PackageInfo, error) {
 	panic("implement me")
 }
 
@@ -79,7 +78,7 @@ func (r *HttpRepo) GetPath() string {
 }
 
 func (r *HttpRepo) GetPublishers() []string {
-	panic("implement me")
+	return r.Publishers
 }
 
 func (r *HttpRepo) GetPackageFMRIs(publisher string, partial bool) []string {
@@ -126,7 +125,7 @@ func (r *HttpRepo) DownloadAllCatalogs() error {
 
 // This function gets the Catalog from the Remote Repository and Writes is to it's cache directory
 func (r *HttpRepo) DownloadCatalog(publisher string) error {
-	dstDir := filepath.Join(r.CacheDir, "catalog", publisher)
+	dstDir := filepath.Join(r.CacheDir, "publisher", publisher, "catalog")
 	if err := os.MkdirAll(dstDir, 0755); err != nil {
 		return err
 	}
@@ -151,7 +150,7 @@ func (r *HttpRepo) DownloadCatalog(publisher string) error {
 		if err != nil {
 			return err
 		}
-		//TODO make replaceable with whatever hasching method is available.
+		//TODO make replaceable with whatever hashing method is available.
 		req.SetChecksum(sha1.New(), []byte(partMeta.Signature), true)
 		glog.Infof("Downloading catalog part %s", part)
 		timer := time.NewTimer(1 * time.Second)
@@ -206,13 +205,29 @@ func (r *HttpRepo) DownloadCatalog(publisher string) error {
 }
 
 func (r *HttpRepo) GetCatalogFile(publisher, part string) (*os.File, error) {
-	//Todo Auto download
-	s := filepath.Join(r.CacheDir, "catalog", publisher, part)
+	s := filepath.Join(r.CacheDir, "publisher", publisher, "catalog", part)
+	if _, err := os.Stat(s); os.IsNotExist(err) {
+		err = r.DownloadCatalog(publisher)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return os.Open(s)
 }
 
-func (r *HttpRepo) GetCatalog(publisher string) *metadata.V1Catalog {
-	panic("implement me")
+func (r *HttpRepo) GetCatalog(publisher string) (*metadata.V1Catalog, error) {
+	catalogPath := filepath.Join(r.CacheDir, "publisher", publisher, "catalog")
+	if _, err := os.Stat(catalogPath); os.IsNotExist(err) {
+		err = r.DownloadCatalog(publisher)
+		if err != nil {
+			return nil, err
+		}
+	}
+	cat := metadata.NewV1Catalog(catalogPath)
+	if err := cat.Load(); err != nil {
+		return nil, err
+	}
+	return cat, nil
 }
 
 func (r *HttpRepo) Search(params map[string]string, query string) string {

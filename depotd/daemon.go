@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	viper.SetDefault("depot_home", "./")
+	viper.SetDefault("depot_home", "./wkd")
 	viper.SetDefault("socket_path", "/var/run/depotd.sock")
 	viper.SetDefault("config_path", "depotd.yml")
 	viper.SetDefault("cache_dir", "cache")
@@ -36,12 +36,13 @@ func NewDepotServer() (depot *DepotServer) {
 	viper.AutomaticEnv()
 	//Set config Path
 	viper.SetConfigFile(viper.GetString("config_path"))
-	//Now read the Config. If it exists it will just be loaded from disk
+	//Read the Config. Ignore if it does not exist
 	viper.ReadInConfig()
 	depot = &DepotServer{
 		Echo: echo.New(),
 	}
 	depot.HomePath = os.ExpandEnv(viper.GetString("depot_home"))
+	viper.Set("cache_dir", filepath.Join(depot.HomePath, viper.GetString("cache_dir")))
 	depot.loadRepositoriesStartup()
 	depot.setupMiddleware()
 	depot.mountPublicEndpoints()

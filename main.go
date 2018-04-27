@@ -24,12 +24,8 @@ func main() {
 		}(sigc)
 		depot.Start(":8080")
 	*/
-	mirror := depotd.MirrorConfig{
-		Name:      "openindiana/hipster",
-		BaseUrl:   "http://pkg.openindiana.org/hipster",
-		LocalPath: "repo",
-	}
-	depot.AddMirror(mirror)
+	mirror := depotd.NewMirrorConfig("hipster", "http://pkg.openindiana.org/hipster")
+	//depot.AddMirror(mirror)
 	err := depot.Mirror(mirror.Name)
 	if err != nil {
 		panic(err)

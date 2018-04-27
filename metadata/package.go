@@ -33,9 +33,9 @@ type PackageInfo struct {
 
 func (p *PackageInfo) SetFmri(fmri string) error {
 	if !strings.HasPrefix(fmri, "pkg://") {
-		return errors.New("Invalid FMRI given")
+		return errors.New("invalid FMRI given")
 	}
-	mapFMRI := p.SplitFmri(fmri)
+	mapFMRI := SplitFmri(fmri)
 	p.Publisher = mapFMRI["publisher"]
 	p.Name = mapFMRI["name"]
 	p.ComponentVersion.FromVersionString(mapFMRI["version"])
@@ -45,7 +45,7 @@ func (p *PackageInfo) SetFmri(fmri string) error {
 	return nil
 }
 
-func (p *PackageInfo) SplitFmri(fmri string) map[string]string {
+func SplitFmri(fmri string) map[string]string {
 	var mapFMRI = map[string]string{}
 	tmpFMRI := fmri
 	if strings.HasPrefix(tmpFMRI, "pkg://") {
@@ -97,14 +97,14 @@ func (p *PackageInfo) FromMap(packMap map[string]interface{}) {
 		case "actions":
 			{
 				for _, loopVal := range value.([]interface{}) {
-					act_string := loopVal.(string)
-					if strings.Contains(act_string, "set") {
+					actString := loopVal.(string)
+					if strings.Contains(actString, "set") {
 						attr := action.AttributeAction{}
-						attr.FromActionString(act_string)
+						attr.FromActionString(actString)
 						p.Attributes = append(p.Attributes, attr)
-					} else if strings.Contains(act_string, "depend") {
+					} else if strings.Contains(actString, "depend") {
 						dep := action.DependAction{}
-						dep.FromActionString(act_string)
+						dep.FromActionString(actString)
 						p.Dependencies = append(p.Dependencies, dep)
 					}
 				}
@@ -145,7 +145,7 @@ func (p *PackageInfo) Merge(p2 *PackageInfo) {
 }
 
 func (p *PackageInfo) ReadManifest(location string) error {
-	path := location + "/" + FMRI2Unicode(p)
+	path := location + "/" + FMRI2Unicode(p.GetFMRI())
 	file, err := os.Open(path)
 	defer file.Close()
 	if err != nil {
@@ -190,7 +190,7 @@ func (p *PackageInfo) Save(location string) error {
 	if err != nil {
 		return errors.New(fmt.Sprintf("Cannot Marshal %s", p.Name))
 	}
-	path := location + "/" + FMRI2Unicode(p) + ".json"
+	path := location + "/" + FMRI2Unicode(p.GetFMRI()) + ".json"
 	file, ferr := os.OpenFile(path, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0666)
 	if ferr != nil {
 		return errors.New(throwError("Saving", p.GetFMRI(), ferr.Error()))
@@ -203,7 +203,7 @@ func (p *PackageInfo) Save(location string) error {
 }
 
 func (p *PackageInfo) Load(location string) error {
-	path := location + "/" + FMRI2Unicode(p) + ".json"
+	path := location + "/" + FMRI2Unicode(p.GetFMRI()) + ".json"
 	file, ferr := os.OpenFile(path, os.O_RDONLY, 0666)
 	if ferr != nil {
 		return errors.New(throwError("Loading", p.GetFMRI(), ferr.Error()))

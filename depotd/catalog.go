@@ -3,6 +3,8 @@ package depotd
 import (
 	"fmt"
 	"github.com/labstack/echo"
+	"github.com/toasterson/pkg6-go/metadata"
+	"net/http"
 	"strings"
 )
 
@@ -13,7 +15,12 @@ func (d *DepotServer) handleCatalogV0(c echo.Context) error {
 func (d *DepotServer) handleCatalogV1(c echo.Context) error {
 	catalogPart := c.Param("catalog")
 	publisher := c.Param("publisher")
-	cat := d.Repos[0].GetCatalog(publisher)
+	var cat *metadata.V1Catalog
+	var err error
+	if cat, err = d.Repos[0].GetCatalog(publisher); err != nil {
+		c.NoContent(http.StatusInternalServerError)
+		return err
+	}
 	var content interface{}
 	var ok bool
 	if catalogPart == "catalog.attrs" {

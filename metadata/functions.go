@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-func FromFMRI(fmri string) PackageInfo {
-	pkg := PackageInfo{}
+func FromFMRI(fmri string) *PackageInfo {
+	pkg := &PackageInfo{}
 	pkg.SetFmri(fmri)
 	return pkg
 }
@@ -15,8 +15,7 @@ func throwError(action string, pkg string, err string) string {
 	return fmt.Sprintf("Error %s %s: %s", action, pkg, err)
 }
 
-func FMRI2Unicode(p *PackageInfo) string {
-	fmri := p.GetFMRI()
+func FMRI2Unicode(fmri string) string {
 	fmri = strings.Replace(fmri, "/", "%2F", -1)
 	fmri = strings.Replace(fmri, ",", "%2C", -1)
 	fmri = strings.Replace(fmri, ":", "%3A", -1)
