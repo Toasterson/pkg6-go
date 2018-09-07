@@ -8,17 +8,35 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
 type FileRepo struct {
-	Path                       string `json:"-"`
-	IsMirror                   bool   `json:"-"`
-	Version                    int
-	TrustAnchorDirectory       string
-	CheckCertificateRevocation bool
-	SignatureRequiredNames     []string
-	Publishers                 []string `json:"-"`
+	Config     *Config
+	Path       string   `json:"-"`
+	IsMirror   bool     `json:"-"`
+	Publishers []string `json:"-"`
+}
+
+func NewFileRepo(path string) *FileRepo {
+	repo := &FileRepo{
+		Path: path,
+		Config: &Config{
+			TrustAnchorDirectory:       DefaultTrustAnchorDirectory,
+			Version:                    Version4,
+			CheckCertificateRevocation: false,
+		},
+	}
+	return repo
+}
+
+func (r *FileRepo) GetConfig() *Config {
+	return r.Config
+}
+
+func (r *FileRepo) SetConfig(config *Config) {
+	*r.Config = *config
 }
 
 // This is a helper method to add  a Catalog to the Repository in the right location
@@ -108,33 +126,41 @@ func (r *FileRepo) Create() error {
 	if err := os.MkdirAll(r.Path, 0755); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Join(r.Path, "publisher"), 0755); err != nil {
+	f, err := os.Create(filepath.Join(r.Path, "pkg5.repository"))
+	if err != nil {
 		return err
 	}
-	for _, pub := range r.Publishers {
-		pubPath := filepath.Join(r.Path, "publisher", pub)
-		if err := os.MkdirAll(pubPath, 0755); err != nil {
-			return err
-		}
-		if err := os.MkdirAll(filepath.Join(pubPath, "catalog"), 0755); err != nil {
-			return err
-		}
-		if err := os.MkdirAll(filepath.Join(pubPath, "file"), 0755); err != nil {
-			return err
-		}
-		if err := os.MkdirAll(filepath.Join(pubPath, "pkg"), 0755); err != nil {
-			return err
-		}
-		if err := os.MkdirAll(filepath.Join(pubPath, "tmp"), 0755); err != nil {
-			return err
-		}
+	defer f.Close()
+	iniData := ini.Empty()
+	pubSection, err := iniData.NewSection("publisher")
+	if err != nil {
+		return err
 	}
-	return nil
+	pubSection.NewKey("prefix", r.Config.PublisherPrefix)
+
+	repoSection, err := iniData.NewSection("repository")
+	if err != nil {
+		return err
+	}
+	repoSection.NewKey("trust-anchor-directory", r.Config.TrustAnchorDirectory)
+	repoSection.NewKey("version", strconv.Itoa(int(r.Config.Version)))
+	repoSection.NewKey("check-certificate-revocation", r.Config.CheckCertificateRevocation.String())
+	repoSection.NewKey("signature-required-names", r.Config.SignatureRequiredNames.String())
+
+	confSection, err := iniData.NewSection("CONFIGURATION")
+	if err != nil {
+		return err
+	}
+
+	confSection.NewKey("version", strconv.Itoa(int(r.Config.Version)))
+
+	_, err = iniData.WriteTo(f)
+	return err
 }
 
 func (r *FileRepo) Load() error {
 	r.Publishers = r.getAllPublishersFromDisk()
-	inifile, err := ini.Load(r.GetPath() + "/pkg5.repository")
+	inifile, err := ini.Load(filepath.Join(r.GetPath(), "pkg5.repository"))
 	if err != nil {
 		return fmt.Errorf("can not load configuration %s: %s", r.Path, err)
 	}
@@ -145,11 +171,12 @@ func (r *FileRepo) Load() error {
 		if !r.HasPublisher(pub) {
 			r.Publishers = append(r.Publishers, pub)
 		}
+		r.Config.PublisherPrefix = pub
 	}
 	repoCFG, _ := inifile.GetSection("repository")
-	r.Version = repoCFG.Key("version").MustInt()
-	r.CheckCertificateRevocation = repoCFG.Key("check-certificate-revocation").MustBool()
-	r.TrustAnchorDirectory = repoCFG.Key("trust-anchor-directory").MustString("/etc/certs/CA/")
+	r.Config.Version = Version(repoCFG.Key("version").MustInt())
+	r.Config.CheckCertificateRevocation = StringeAbleBool(repoCFG.Key("check-certificate-revocation").MustBool())
+	r.Config.TrustAnchorDirectory = repoCFG.Key("trust-anchor-directory").MustString("/etc/certs/CA/")
 	//TODO Full Load of Config as described in Documentation
 	return nil
 }
@@ -212,7 +239,7 @@ func (r *FileRepo) GetPackage(fmri string) (*metadata.PackageInfo, error) {
 	case 5:
 		pkg.Load(pkgPath)
 	default:
-		return pkg, fmt.Errorf("can not load Package from a Repository with version: %d", r.Version)
+		return pkg, fmt.Errorf("can not load Package from a Repository with version: %d", r.Config.Version)
 	}
 	return pkg, nil
 }

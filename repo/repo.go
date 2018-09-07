@@ -22,12 +22,17 @@ type Repository interface {
 	GetCatalogFile(publisher, part string) (*os.File, error)
 	Search(params map[string]string, query string) string
 	AddPackage(info metadata.PackageInfo) error
+	GetConfig() *Config
+	SetConfig(config *Config)
 }
 
 func NewRepo(url string) (Repository, error) {
 	switch {
 	case strings.HasPrefix(url, "file://"):
 		if stat, err := os.Stat(strings.Replace(url, "file://", "", -1)); err != nil {
+			if os.IsNotExist(err) {
+				return &FileRepo{Path: strings.Replace(url, "file://", "", -1)}, nil
+			}
 			return nil, err
 		} else if stat.IsDir() {
 			return &FileRepo{Path: strings.Replace(url, "file://", "", -1)}, nil

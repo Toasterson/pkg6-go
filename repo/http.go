@@ -40,6 +40,14 @@ type HttpRepo struct {
 	Publishers                 []string `json:"-"`
 }
 
+func (r *HttpRepo) GetConfig() *Config {
+	panic("implement me")
+}
+
+func (r *HttpRepo) SetConfig(config *Config) {
+	panic("implement me")
+}
+
 func (r *HttpRepo) loadPublishersFromRemote() (err error) {
 	dstDir := r.CacheDir
 	pubFileName := filepath.Join(dstDir, "publisher.json")
