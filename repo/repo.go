@@ -31,11 +31,11 @@ func NewRepo(url string) (Repository, error) {
 	case strings.HasPrefix(url, "file://"):
 		if stat, err := os.Stat(strings.Replace(url, "file://", "", -1)); err != nil {
 			if os.IsNotExist(err) {
-				return &FileRepo{Path: strings.Replace(url, "file://", "", -1)}, nil
+				return NewFileRepo(strings.Replace(url, "file://", "", -1)), nil
 			}
 			return nil, err
 		} else if stat.IsDir() {
-			return &FileRepo{Path: strings.Replace(url, "file://", "", -1)}, nil
+			return NewFileRepo(strings.Replace(url, "file://", "", -1)), nil
 		} else if stat.Mode().IsRegular() {
 			return nil, fmt.Errorf("p5p format not implemented yet")
 		}
