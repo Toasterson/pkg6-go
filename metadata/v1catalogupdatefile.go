@@ -124,5 +124,5 @@ type V1PackageUpdateDependency struct {
 
 type V1PackageUpdateSummary struct {
 	Actions V1Actions `json:"actions"`
-	Version Version   `json:"version"`
+	Version string    `json:"version"`
 }

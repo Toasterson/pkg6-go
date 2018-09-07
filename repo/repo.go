@@ -9,7 +9,7 @@ import (
 
 type Repository interface {
 	GetFile(publisher string, hash string) (*os.File, error)
-	GetPackage(fmri string) (metadata.PackageInfo, error)
+	GetPackage(fmri string) (*metadata.PackageInfo, error)
 	GetPath() string
 	GetPublishers() []string
 	GetPackageFMRIs(publisher string, partial bool) []string
@@ -18,7 +18,8 @@ type Repository interface {
 	Save() (err error)
 	Destroy() error
 	GetVersion() int
-	GetCatalog(publisher string) *metadata.V1Catalog
+	GetCatalog(publisher string) (*metadata.V1Catalog, error)
+	GetCatalogFile(publisher, part string) (*os.File, error)
 	Search(params map[string]string, query string) string
 	AddPackage(info metadata.PackageInfo) error
 }
@@ -37,7 +38,7 @@ func NewRepo(url string) (Repository, error) {
 	case strings.HasPrefix(url, "http://"):
 		fallthrough
 	case strings.HasPrefix(url, "https://"):
-		return nil, fmt.Errorf("not implemented")
+		return &HttpRepo{}, nil
 	default:
 		return nil, fmt.Errorf("can not create repo object invalid url")
 	}

@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,9 +33,9 @@ type PackageInfo struct {
 
 func (p *PackageInfo) SetFmri(fmri string) error {
 	if !strings.HasPrefix(fmri, "pkg://") {
-		return errors.New("Invalid FMRI given")
+		return errors.New("invalid FMRI given")
 	}
-	mapFMRI := p.SplitFmri(fmri)
+	mapFMRI := SplitFmri(fmri)
 	p.Publisher = mapFMRI["publisher"]
 	p.Name = mapFMRI["name"]
 	p.ComponentVersion.FromVersionString(mapFMRI["version"])
@@ -44,7 +45,7 @@ func (p *PackageInfo) SetFmri(fmri string) error {
 	return nil
 }
 
-func (p *PackageInfo) SplitFmri(fmri string) map[string]string {
+func SplitFmri(fmri string) map[string]string {
 	var mapFMRI = map[string]string{}
 	tmpFMRI := fmri
 	if strings.HasPrefix(tmpFMRI, "pkg://") {
@@ -96,14 +97,14 @@ func (p *PackageInfo) FromMap(packMap map[string]interface{}) {
 		case "actions":
 			{
 				for _, loopVal := range value.([]interface{}) {
-					act_string := loopVal.(string)
-					if strings.Contains(act_string, "set") {
+					actString := loopVal.(string)
+					if strings.Contains(actString, "set") {
 						attr := action.AttributeAction{}
-						attr.FromActionString(act_string)
+						attr.FromActionString(actString)
 						p.Attributes = append(p.Attributes, attr)
-					} else if strings.Contains(act_string, "depend") {
+					} else if strings.Contains(actString, "depend") {
 						dep := action.DependAction{}
-						dep.FromActionString(act_string)
+						dep.FromActionString(actString)
 						p.Dependencies = append(p.Dependencies, dep)
 					}
 				}
@@ -144,7 +145,7 @@ func (p *PackageInfo) Merge(p2 *PackageInfo) {
 }
 
 func (p *PackageInfo) ReadManifest(location string) error {
-	path := location + "/" + FMRI2Unicode(p)
+	path := location + "/" + FMRI2Unicode(p.GetFMRI())
 	file, err := os.Open(path)
 	defer file.Close()
 	if err != nil {
@@ -184,23 +185,12 @@ func (p *PackageInfo) GetFMRI() string {
 	return p.Name + "@" + p.ComponentVersion.ToVersionString() + "," + p.BuildVersion + "-" + p.BranchVersion + ":" + p.PackagingDate.Format("20060102T150405Z")
 }
 
-func (p *PackageInfo) DropManifest(location string) error {
-	return os.Remove(location + "/" + FMRI2Unicode(p))
-}
-
-func (p *PackageInfo) UpgradeFormat(location string) error {
-	if err := p.Save(location); err != nil {
-		return err
-	}
-	return p.DropManifest(location)
-}
-
 func (p *PackageInfo) Save(location string) error {
 	b, err := json.Marshal(p)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Cannot Marshal %s", p.Name))
 	}
-	path := location + "/" + FMRI2Unicode(p) + ".json"
+	path := location + "/" + FMRI2Unicode(p.GetFMRI()) + ".json"
 	file, ferr := os.OpenFile(path, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0666)
 	if ferr != nil {
 		return errors.New(throwError("Saving", p.GetFMRI(), ferr.Error()))
@@ -213,7 +203,7 @@ func (p *PackageInfo) Save(location string) error {
 }
 
 func (p *PackageInfo) Load(location string) error {
-	path := location + "/" + FMRI2Unicode(p) + ".json"
+	path := location + "/" + FMRI2Unicode(p.GetFMRI()) + ".json"
 	file, ferr := os.OpenFile(path, os.O_RDONLY, 0666)
 	if ferr != nil {
 		return errors.New(throwError("Loading", p.GetFMRI(), ferr.Error()))
@@ -227,7 +217,42 @@ func (p *PackageInfo) Load(location string) error {
 	return json.Unmarshal(b, p)
 }
 
-func (p *PackageInfo) WriteManifest() string {
+func (p PackageInfo) WriteManifest() string {
+	buff := bytes.NewBufferString("")
+	for _, attr := range p.Attributes {
+		buff.WriteString(fmt.Sprintf("set name=%s", attr.Name))
+		for _, val := range attr.Values {
+			buff.WriteString(fmt.Sprintf(" value=\"%s\"", val))
+		}
+		if len(attr.Optionals) > 0 {
+			for optKey, optValue := range attr.Optionals {
+				buff.WriteString(fmt.Sprintf(" %s=\"%s\"", optKey, optValue))
+			}
+		}
+		buff.WriteString("\n")
+	}
+	for _, dir := range p.Directories {
+		buff.WriteString(fmt.Sprintf("dir group=%s mode=%s owner=%s path=\"%s\"", dir.Group, dir.Mode, dir.Owner, dir.Path))
+		if len(dir.Facets) > 0 {
+			for key, val := range dir.Facets {
+				buff.WriteString(fmt.Sprintf("%s=%s", key, val))
+			}
+		}
+		buff.WriteString("\n")
+	}
+	/*
+		for _, file := range p.Files {
 
-	return ""
+		}
+		for _, link := range p.Links {
+
+		}
+		for _, license := range p.Licenses {
+
+		}
+		for _, dep := range p.Dependencies {
+
+		}
+	*/
+	return buff.String()
 }
