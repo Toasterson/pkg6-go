@@ -131,6 +131,16 @@ func (r *FileRepo) Create() error {
 		return err
 	}
 	defer f.Close()
+	return r.SaveConfiguration(f)
+}
+
+func (r *FileRepo) SaveConfiguration(f io.Writer) error {
+	if f == nil {
+		var err error
+		if f, err = os.Create(filepath.Join(r.Path, "pkg5.repository")); err != nil {
+			return err
+		}
+	}
 	iniData := ini.Empty()
 	pubSection, err := iniData.NewSection("publisher")
 	if err != nil {

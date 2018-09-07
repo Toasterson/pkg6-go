@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"path/filepath"
+	"time"
 )
 
 type V1Catalog struct {
@@ -18,7 +19,7 @@ type V1Catalog struct {
 	V1UpdateContent     map[string]*V1CatalogUpdateFile `json:"-"`
 	Version             int                             `json:"version"`
 	Packages            map[string][]PackageInfo        `json:"-"`
-	Signature           Signature                       `json:"_SIGNATURE"`
+	Signature           Signature                       `json:"_SIGNATURE,omitempty"`
 }
 
 type CatalogPart struct {
@@ -29,6 +30,8 @@ type CatalogPart struct {
 func NewV1Catalog(location string) *V1Catalog {
 	return &V1Catalog{
 		Location:        location,
+		Created:         V1CatalogTimeStamp(time.Now()),
+		LastModified:    V1CatalogTimeStamp(time.Now()),
 		Parts:           make(map[string]CatalogPart),
 		V1PartContent:   make(map[string]*V1CatalogPartFile),
 		V1UpdateContent: make(map[string]*V1CatalogUpdateFile),

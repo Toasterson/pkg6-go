@@ -8,9 +8,7 @@ import (
 
 const V1CatalogTimeStampFormat = "20060102T150405.000000Z"
 
-type V1CatalogTimeStamp struct {
-	time.Time
-}
+type V1CatalogTimeStamp time.Time
 
 func (t *V1CatalogTimeStamp) UnmarshalJSON(blob []byte) error {
 	var stringTime string
@@ -20,13 +18,13 @@ func (t *V1CatalogTimeStamp) UnmarshalJSON(blob []byte) error {
 	if parserdTime, err := time.Parse(V1CatalogTimeStampFormat, stringTime); err != nil {
 		return err
 	} else {
-		t.Time = parserdTime
+		*t = V1CatalogTimeStamp(parserdTime)
 		return nil
 	}
 }
 
 func (t V1CatalogTimeStamp) MarshalJSON() (blob []byte, err error) {
-	tim := t.Time
+	tim := time.Time(t)
 	stringTime := tim.Format(V1CatalogTimeStampFormat)
 	if stringTime == "" {
 		return nil, fmt.Errorf("could not Format %s as string", t)
